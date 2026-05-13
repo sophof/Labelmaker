@@ -203,20 +203,28 @@ window.onStyleChange = function() {
 
 function renderParams(params) {
   const grid = document.getElementById('params-grid');
-  grid.innerHTML = Object.entries(params).map(([key, p]) => `
-    <div class="field">
-      <label>${p.label} (${p.unit})</label>
-      <input type="number" id="param-${key}" value="${p.value}" step="${p.type === 'float' ? '0.5' : '1'}" />
-    </div>
-  `).join('');
+  grid.innerHTML = Object.entries(params).map(([key, p]) => {
+    const unitLabel = p.unit ? ` (${p.unit})` : '';
+    const fullWidth = p.type === 'str' ? ' style="grid-column: 1 / -1"' : '';
+    let input;
+    if (p.type === 'str' && p.options?.length) {
+      const opts = p.options.map(o => `<option value="${o}"${o === p.value ? ' selected' : ''}>${o}</option>`).join('');
+      input = `<select id="param-${key}">${opts}</select>`;
+    } else if (p.type === 'str') {
+      input = `<input type="text" id="param-${key}" value="${p.value}" />`;
+    } else {
+      input = `<input type="number" id="param-${key}" value="${p.value}" step="0.5" />`;
+    }
+    return `<div class="field"${fullWidth}><label>${p.label}${unitLabel}</label>${input}</div>`;
+  }).join('');
 }
 
 function getParams() {
   const grid = document.getElementById('params-grid');
   const result = {};
-  for (const input of grid.querySelectorAll('input[type="number"]')) {
-    const key = input.id.replace('param-', '');
-    result[key] = parseFloat(input.value);
+  for (const el of grid.querySelectorAll('input, select')) {
+    const key = el.id.replace('param-', '');
+    result[key] = el.type === 'number' ? parseFloat(el.value) : el.value;
   }
   return result;
 }

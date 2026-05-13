@@ -29,7 +29,7 @@ templates = Jinja2Templates(directory="templates")
 class GenerateParams(BaseModel):
     text: str
     style: str
-    params: dict[str, float]
+    params: dict[str, float | str]
 
 
 @app.get("/")

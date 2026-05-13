@@ -7,15 +7,19 @@ STYLE_ID = "embossed"
 STYLE_NAME = "Embossed (raised text)"
 PARAMS = PARAMS
 
+CORNER_RADIUS = 2.0
+CHAMFER = 0.2
+TEXT_DEPTH = 0.4
+
 
 def build(text: str, params: dict, tmf_path: str, stl_path: str) -> None:
-    base_part = build_base(params)
+    base_part = build_base(params, CORNER_RADIUS, CHAMFER)
     top_face = base_part.faces().sort_by(Axis.Z)[-1]
 
     with BuildPart() as text_part:
         with BuildSketch(Plane(top_face)):
-            Text(text, font_size=params["font_size"], align=(Align.CENTER, Align.CENTER))
-        extrude(amount=params["text_depth"])
+            Text(text, font_size=params["font_size"], font=params["font"], align=(Align.CENTER, Align.CENTER))
+        extrude(amount=TEXT_DEPTH)
 
     export_3mf([(base_part.part, "base"), (text_part.part, "text")], tmf_path)
     export_stl(base_part.part + text_part.part, stl_path)
