@@ -48,11 +48,6 @@
     }
     #download-btn:hover { background: #15803d; }
 
-    #export-btn {
-      display: none; background: #4b5563; color: #eee;
-    }
-    #export-btn:hover { background: #374151; }
-
     #status { font-size: 0.8rem; color: #aaa; min-height: 1.2em; }
     #status.warning { color: #f59e0b; }
 
@@ -98,7 +93,6 @@
 
   <button id="generate-btn" onclick="generate()">Generate</button>
   <a id="download-btn" download>Download 3MF</a>
-  <button id="export-btn" onclick="exportYaml()">Export as YAML</button>
   <div id="status"></div>
 </div>
 
@@ -185,6 +179,8 @@ window.loadSTLs = function(baseUrl, textUrl, baseColor, textColor) {
 
 // --- System/box/style data ---
 let systemsData = [];
+let boxParams = {}; // fixed dimensions from the box YAML, passed to generate automatically
+const BOX_PARAM_KEYS = new Set(['width', 'height', 'depth']);
 
 async function loadSystems() {
   const res = await fetch('/systems');
@@ -232,8 +228,13 @@ window.onStyleChange = function() {
 };
 
 function renderParams(params) {
+  boxParams = {};
+  for (const [key, p] of Object.entries(params)) {
+    if (BOX_PARAM_KEYS.has(key)) boxParams[key] = p.value ?? p.default;
+  }
+
   const grid = document.getElementById('params-grid');
-  grid.innerHTML = Object.entries(params).filter(([key]) => key !== 'column_separator').map(([key, p]) => {
+  grid.innerHTML = Object.entries(params).filter(([key]) => !BOX_PARAM_KEYS.has(key) && key !== 'column_separator').map(([key, p]) => {
     const unitLabel = p.unit ? ` (${p.unit})` : '';
     const fullWidth = p.type === 'str' ? ' style="grid-column: 1 / -1"' : '';
     let input;
@@ -259,36 +260,25 @@ function getParams() {
   return result;
 }
 
-function getCurrentLabel() {
-  const sysId = document.getElementById('system-select').value;
-  const boxId = document.getElementById('box-select').value;
-  const styleId = document.getElementById('style-select').value;
-  const sys = systemsData.find(s => s.id === sysId);
-  const box = sys?.boxes.find(b => b.id === boxId);
-  return { sys, box, label: box?.labels.find(l => l.style === styleId), styleId };
-}
-
 window.generate = async function() {
   const btn = document.getElementById('generate-btn');
   const status = document.getElementById('status');
   const dlBtn = document.getElementById('download-btn');
-  const exportBtn = document.getElementById('export-btn');
 
   btn.disabled = true;
   btn.textContent = 'Generating…';
   status.textContent = '';
   dlBtn.style.display = 'none';
-  exportBtn.style.display = 'none';
 
   try {
-    const { styleId } = getCurrentLabel();
+    const styleId = document.getElementById('style-select').value;
     const separator = document.getElementById('multicolumn-toggle').checked
       ? document.getElementById('column-separator').value
       : '';
     const body = {
       text: document.getElementById('text').value,
       style: styleId,
-      params: { ...getParams(), column_separator: separator },
+      params: { ...boxParams, ...getParams(), column_separator: separator },
     };
 
     const res = await fetch('/generate', {
@@ -306,7 +296,6 @@ window.generate = async function() {
     window.loadSTLs(data.base_stl_url, data.text_stl_url, data.base_color, data.text_color);
     dlBtn.href = data['3mf_url'];
     dlBtn.style.display = 'block';
-    exportBtn.style.display = 'block';
     if (data.warnings?.length) {
       status.className = 'warning';
       status.textContent = data.warnings.join(' · ');
@@ -321,30 +310,6 @@ window.generate = async function() {
     btn.disabled = false;
     btn.textContent = 'Generate';
   }
-};
-
-window.exportYaml = function() {
-  const { box, styleId } = getCurrentLabel();
-  const params = getParams();
-
-  const paramsYaml = Object.entries(params)
-    .filter(([k]) => k !== 'column_separator')
-    .map(([k, v]) => `      ${k}: ${v}`)
-    .join('\n');
-
-  const yaml = [
-    `name: ${box?.name || 'Custom'}`,
-    `labels:`,
-    `  - style: ${styleId}`,
-    `    params:`,
-    paramsYaml,
-  ].join('\n');
-
-  const blob = new Blob([yaml], { type: 'text/yaml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${box?.id || 'custom'}-custom.yaml`;
-  a.click();
 };
 
 window.onMulticolumnToggle = function() {

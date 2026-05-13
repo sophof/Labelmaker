@@ -2,5 +2,5 @@ name: Standard box
 params:
   width: 60
   height: 20
-  depth: 3
+  depth: 2
   font_size: 8
