@@ -8,34 +8,45 @@
     body { font-family: sans-serif; display: flex; height: 100vh; background: #1a1a1a; color: #eee; }
 
     #sidebar {
-      width: 280px; min-width: 280px; padding: 24px;
+      width: 300px; min-width: 300px; padding: 24px;
       background: #242424; display: flex; flex-direction: column; gap: 16px;
       overflow-y: auto;
     }
     h1 { font-size: 1.2rem; color: #fff; }
+    h2 { font-size: 0.85rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
 
     .field { display: flex; flex-direction: column; gap: 4px; }
     label { font-size: 0.8rem; color: #aaa; }
-    input[type="text"], input[type="number"] {
+    input[type="text"], input[type="number"], select {
       background: #333; border: 1px solid #444; color: #eee;
       padding: 6px 10px; border-radius: 4px; font-size: 0.95rem; width: 100%;
     }
-    input:focus { outline: none; border-color: #888; }
+    input:focus, select:focus { outline: none; border-color: #888; }
+    select option { background: #333; }
 
-    button#generate-btn {
-      background: #2563eb; color: #fff; border: none;
-      padding: 10px; border-radius: 6px; font-size: 1rem;
-      cursor: pointer; margin-top: 8px;
+    .divider { border: none; border-top: 1px solid #333; margin: 4px 0; }
+
+    .params-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
     }
-    button#generate-btn:hover { background: #1d4ed8; }
-    button#generate-btn:disabled { background: #444; cursor: default; }
+
+    button {
+      border: none; padding: 10px; border-radius: 6px; font-size: 0.95rem; cursor: pointer;
+    }
+    #generate-btn { background: #2563eb; color: #fff; }
+    #generate-btn:hover { background: #1d4ed8; }
+    #generate-btn:disabled { background: #444; cursor: default; }
 
     #download-btn {
-      display: none; text-align: center;
-      background: #16a34a; color: #fff; text-decoration: none;
-      padding: 10px; border-radius: 6px; font-size: 1rem;
+      display: none; text-align: center; text-decoration: none;
+      background: #16a34a; color: #fff; padding: 10px; border-radius: 6px; font-size: 0.95rem;
     }
     #download-btn:hover { background: #15803d; }
+
+    #export-btn {
+      display: none; background: #4b5563; color: #eee;
+    }
+    #export-btn:hover { background: #374151; }
 
     #status { font-size: 0.8rem; color: #aaa; min-height: 1.2em; }
 
@@ -49,32 +60,31 @@
   <h1>Label Maker</h1>
 
   <div class="field">
-    <label>Text</label>
+    <label>System</label>
+    <select id="system-select" onchange="onSystemChange()"></select>
+  </div>
+  <div class="field">
+    <label>Box type</label>
+    <select id="box-select" onchange="onBoxChange()"></select>
+  </div>
+  <div class="field">
+    <label>Label style</label>
+    <select id="style-select" onchange="onStyleChange()"></select>
+  </div>
+
+  <hr class="divider">
+  <h2>Label text</h2>
+  <div class="field">
     <input type="text" id="text" value="Resistors" />
   </div>
-  <div class="field">
-    <label>Width (mm)</label>
-    <input type="number" id="width" value="60" step="1" />
-  </div>
-  <div class="field">
-    <label>Height (mm)</label>
-    <input type="number" id="height" value="20" step="1" />
-  </div>
-  <div class="field">
-    <label>Depth (mm)</label>
-    <input type="number" id="depth" value="3" step="0.5" />
-  </div>
-  <div class="field">
-    <label>Font size (mm)</label>
-    <input type="number" id="font_size" value="8" step="0.5" />
-  </div>
-  <div class="field">
-    <label>Text raise (mm)</label>
-    <input type="number" id="text_depth" value="1" step="0.25" />
-  </div>
+
+  <hr class="divider">
+  <h2>Parameters</h2>
+  <div class="params-grid" id="params-grid"></div>
 
   <button id="generate-btn" onclick="generate()">Generate</button>
   <a id="download-btn" download>Download 3MF</a>
+  <button id="export-btn" onclick="exportYaml()">Export as YAML</button>
   <div id="status"></div>
 </div>
 
@@ -94,6 +104,7 @@ import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+// --- 3D preview setup ---
 const container = document.getElementById('preview');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(devicePixelRatio);
@@ -144,31 +155,105 @@ window.loadSTL = function(url) {
   });
 };
 
+// --- System/box/style data ---
+let systemsData = [];
+
+async function loadSystems() {
+  const res = await fetch('/systems');
+  systemsData = await res.json();
+
+  const sysSelect = document.getElementById('system-select');
+  sysSelect.innerHTML = systemsData.map(s =>
+    `<option value="${s.id}">${s.name}</option>`
+  ).join('');
+  onSystemChange();
+}
+
+window.onSystemChange = function() {
+  const sysId = document.getElementById('system-select').value;
+  const sys = systemsData.find(s => s.id === sysId);
+  const boxSelect = document.getElementById('box-select');
+  boxSelect.innerHTML = (sys?.boxes || []).map(b =>
+    `<option value="${b.id}">${b.name}</option>`
+  ).join('');
+  onBoxChange();
+};
+
+window.onBoxChange = function() {
+  const sysId = document.getElementById('system-select').value;
+  const boxId = document.getElementById('box-select').value;
+  const sys = systemsData.find(s => s.id === sysId);
+  const box = sys?.boxes.find(b => b.id === boxId);
+  const styleSelect = document.getElementById('style-select');
+  styleSelect.innerHTML = (box?.labels || []).map(l =>
+    `<option value="${l.style}">${l.style_name}</option>`
+  ).join('');
+  onStyleChange();
+};
+
+window.onStyleChange = function() {
+  const sysId = document.getElementById('system-select').value;
+  const boxId = document.getElementById('box-select').value;
+  const styleId = document.getElementById('style-select').value;
+  const sys = systemsData.find(s => s.id === sysId);
+  const box = sys?.boxes.find(b => b.id === boxId);
+  const label = box?.labels.find(l => l.style === styleId);
+  renderParams(label?.params || {});
+};
+
+function renderParams(params) {
+  const grid = document.getElementById('params-grid');
+  grid.innerHTML = Object.entries(params).map(([key, p]) => `
+    <div class="field">
+      <label>${p.label} (${p.unit})</label>
+      <input type="number" id="param-${key}" value="${p.value}" step="${p.type === 'float' ? '0.5' : '1'}" />
+    </div>
+  `).join('');
+}
+
+function getParams() {
+  const grid = document.getElementById('params-grid');
+  const result = {};
+  for (const input of grid.querySelectorAll('input[type="number"]')) {
+    const key = input.id.replace('param-', '');
+    result[key] = parseFloat(input.value);
+  }
+  return result;
+}
+
+function getCurrentLabel() {
+  const sysId = document.getElementById('system-select').value;
+  const boxId = document.getElementById('box-select').value;
+  const styleId = document.getElementById('style-select').value;
+  const sys = systemsData.find(s => s.id === sysId);
+  const box = sys?.boxes.find(b => b.id === boxId);
+  return { sys, box, label: box?.labels.find(l => l.style === styleId), styleId };
+}
+
 window.generate = async function() {
   const btn = document.getElementById('generate-btn');
   const status = document.getElementById('status');
   const dlBtn = document.getElementById('download-btn');
+  const exportBtn = document.getElementById('export-btn');
 
   btn.disabled = true;
   btn.textContent = 'Generating…';
   status.textContent = '';
   dlBtn.style.display = 'none';
+  exportBtn.style.display = 'none';
 
   try {
-    const params = {
-      text:       document.getElementById('text').value,
-      width:      parseFloat(document.getElementById('width').value),
-      height:     parseFloat(document.getElementById('height').value),
-      depth:      parseFloat(document.getElementById('depth').value),
-      font_size:  parseFloat(document.getElementById('font_size').value),
-      text_depth: parseFloat(document.getElementById('text_depth').value),
-      label_type: 'flat',
+    const { styleId } = getCurrentLabel();
+    const body = {
+      text: document.getElementById('text').value,
+      style: styleId,
+      params: getParams(),
     };
 
     const res = await fetch('/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
@@ -178,9 +263,9 @@ window.generate = async function() {
 
     const data = await res.json();
     window.loadSTL(data.stl_url);
-
     dlBtn.href = data['3mf_url'];
     dlBtn.style.display = 'block';
+    exportBtn.style.display = 'block';
     status.textContent = 'Done.';
   } catch (e) {
     status.textContent = 'Error: ' + e.message;
@@ -189,6 +274,31 @@ window.generate = async function() {
     btn.textContent = 'Generate';
   }
 };
+
+window.exportYaml = function() {
+  const { box, styleId } = getCurrentLabel();
+  const params = getParams();
+
+  const paramsYaml = Object.entries(params)
+    .map(([k, v]) => `      ${k}: ${v}`)
+    .join('\n');
+
+  const yaml = [
+    `name: ${box?.name || 'Custom'}`,
+    `labels:`,
+    `  - style: ${styleId}`,
+    `    params:`,
+    paramsYaml,
+  ].join('\n');
+
+  const blob = new Blob([yaml], { type: 'text/yaml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${box?.id || 'custom'}-custom.yaml`;
+  a.click();
+};
+
+loadSystems();
 </script>
 
 </body>

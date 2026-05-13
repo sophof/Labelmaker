@@ -503,6 +503,7 @@ dependencies = [
     { name = "build123d" },
     { name = "fastapi" },
     { name = "jinja2" },
+    { name = "pyyaml" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -511,6 +512,7 @@ requires-dist = [
     { name = "build123d", specifier = ">=0.10.0" },
     { name = "fastapi", specifier = ">=0.136.1" },
     { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.46.0" },
 ]
 

@@ -8,6 +8,9 @@ from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+import labels as label_registry
+from systems import load_systems
+
 GENERATED_DIR = "generated"
 
 
@@ -25,12 +28,8 @@ templates = Jinja2Templates(directory="templates")
 
 class GenerateParams(BaseModel):
     text: str
-    label_type: str = "flat"
-    width: float = 60.0
-    height: float = 20.0
-    depth: float = 3.0
-    font_size: float = 8.0
-    text_depth: float = 1.0
+    style: str
+    params: dict[str, float]
 
 
 @app.get("/")
@@ -38,17 +37,22 @@ def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
 
+@app.get("/systems")
+def systems():
+    return load_systems()
+
+
 @app.post("/generate")
-def generate(params: GenerateParams):
+def generate(req: GenerateParams):
+    style = label_registry.get_style(req.style)
+    if style is None:
+        raise HTTPException(status_code=400, detail=f"Unknown style: {req.style}")
+
     file_id = str(uuid.uuid4())
     tmf_path = os.path.join(GENERATED_DIR, f"{file_id}.3mf")
     stl_path = os.path.join(GENERATED_DIR, f"{file_id}.stl")
 
-    if params.label_type == "flat":
-        from labels.flat import build_flat_label
-        build_flat_label(params, tmf_path, stl_path)
-    else:
-        raise HTTPException(status_code=400, detail=f"Unknown label type: {params.label_type}")
+    style.build(req.text, req.params, tmf_path, stl_path)
 
     return {
         "3mf_url": f"/download/{file_id}.3mf",

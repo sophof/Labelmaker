@@ -1,0 +1,29 @@
+name: Medium bin
+labels:
+  - style: embossed
+    params:
+      width: 60
+      height: 20
+      depth: 3
+      font_size: 8
+      text_depth: 0.4
+      corner_radius: 2.0
+      chamfer: 0.2
+  - style: debossed
+    params:
+      width: 60
+      height: 20
+      depth: 3
+      font_size: 8
+      text_depth: 0.4
+      corner_radius: 2.0
+      chamfer: 0.2
+  - style: debossed-open
+    params:
+      width: 60
+      height: 20
+      depth: 3
+      font_size: 8
+      text_depth: 0.4
+      corner_radius: 2.0
+      chamfer: 0.2
