@@ -1,9 +1,10 @@
 import glob
 import os
+import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -13,13 +14,31 @@ from config import BASE_COLOR, TEXT_COLOR
 from systems import load_systems
 
 GENERATED_DIR = "generated"
+MAX_FILE_AGE = 86400  # 24 hours
+
+
+def cleanup_old_files():
+    now = time.time()
+    for f in glob.glob(os.path.join(GENERATED_DIR, "*")):
+        try:
+            if now - os.path.getmtime(f) > MAX_FILE_AGE:
+                os.remove(f)
+        except OSError:
+            pass
+
+
+def cleanup_session(session_id: str):
+    for f in glob.glob(os.path.join(GENERATED_DIR, f"{session_id}_*")):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
 
 
 @asynccontextmanager
 async def lifespan(app):
     os.makedirs(GENERATED_DIR, exist_ok=True)
-    for f in glob.glob(os.path.join(GENERATED_DIR, "*")):
-        os.remove(f)
+    cleanup_old_files()
     yield
 
 
@@ -49,29 +68,36 @@ def generate(req: GenerateParams):
     if style is None:
         raise HTTPException(status_code=400, detail=f"Unknown style: {req.style}")
 
-    file_id = str(uuid.uuid4())
-    tmf_path = os.path.join(GENERATED_DIR, f"{file_id}.3mf")
-    base_stl_path = os.path.join(GENERATED_DIR, f"{file_id}_base.stl")
-    text_stl_path = os.path.join(GENERATED_DIR, f"{file_id}_text.stl")
+    cleanup_old_files()
+
+    session_id = str(uuid.uuid4())
+    tmf_path = os.path.join(GENERATED_DIR, f"{session_id}_label.3mf")
+    base_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_label_base.stl")
+    text_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_label_text.stl")
 
     style.build(req.text, req.params, tmf_path, base_stl_path, text_stl_path, BASE_COLOR, TEXT_COLOR)
 
     response = {
-        "3mf_url": f"/download/{file_id}.3mf",
-        "base_stl_url": f"/download/{file_id}_base.stl",
+        "3mf_url": f"/download/{session_id}_label.3mf",
+        "base_stl_url": f"/download/{session_id}_label_base.stl",
         "base_color": BASE_COLOR,
         "text_color": TEXT_COLOR,
     }
     if os.path.exists(text_stl_path):
-        response["text_stl_url"] = f"/download/{file_id}_text.stl"
+        response["text_stl_url"] = f"/download/{session_id}_label_text.stl"
     return response
 
 
 @app.get("/download/{filename}")
-def download(filename: str):
+def download(filename: str, background_tasks: BackgroundTasks):
     if filename != os.path.basename(filename):
         raise HTTPException(status_code=400, detail="Invalid filename")
     path = os.path.join(GENERATED_DIR, filename)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")
+
+    if filename.endswith("_label.3mf"):
+        session_id = filename[: -len("_label.3mf")]
+        background_tasks.add_task(cleanup_session, session_id)
+
     return FileResponse(path)
