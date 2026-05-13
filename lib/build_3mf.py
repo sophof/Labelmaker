@@ -19,6 +19,16 @@ _RELS = """\
     Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>
 </Relationships>"""
 
+_MATERIALS_NS = "http://schemas.microsoft.com/3dmanufacturing/material/2015/02"
+
+
+def _to_rgba(color: str) -> str:
+    """Normalise a hex color to #RRGGBBAA (fully opaque if no alpha given)."""
+    h = color.lstrip("#")
+    if len(h) == 6:
+        h += "FF"
+    return "#" + h.upper()
+
 
 def _parse_binary_stl(data: bytes):
     num_triangles = struct.unpack_from("<I", data, 80)[0]
@@ -40,7 +50,7 @@ def _parse_binary_stl(data: bytes):
     return vertices, triangles
 
 
-def _shape_to_xml(shape: Shape, obj_id: int, name: str, mat_id: int | None) -> str:
+def _shape_to_xml(shape: Shape, obj_id: int, name: str, pid: int | None, pindex: int | None) -> str:
     with tempfile.NamedTemporaryFile(suffix=".stl", delete=False) as f:
         tmp = f.name
     export_stl(shape, tmp)
@@ -55,7 +65,7 @@ def _shape_to_xml(shape: Shape, obj_id: int, name: str, mat_id: int | None) -> s
     tris = "\n        ".join(
         f'<triangle v1="{t[0]}" v2="{t[1]}" v3="{t[2]}"/>' for t in triangles
     )
-    mat_attrs = f' pid="{mat_id}" pindex="0"' if mat_id is not None else ""
+    mat_attrs = f' pid="{pid}" pindex="{pindex}"' if pid is not None else ""
     return f"""\
     <object id="{obj_id}" name="{name}" type="model"{mat_attrs}>
       <mesh>
@@ -72,45 +82,49 @@ def _shape_to_xml(shape: Shape, obj_id: int, name: str, mat_id: int | None) -> s
 def export_3mf(shapes: list[tuple[Shape, str, str | None]], output_path: str) -> None:
     """Write a 3MF file with one component per (shape, name, color) tuple.
 
-    color is an optional hex string like '#FF6600'. Each colored shape gets its
-    own basematerials resource so slicers can assign it a filament/extruder.
-    The shape may be a Compound (e.g. multi-glyph text) — export_stl handles
-    that transparently, producing one mesh object per tuple entry.
+    Colors are collected into a single m:colorgroup resource so Bambu Studio /
+    OrcaSlicer can map each distinct color to a filament via the standard 3MF
+    color-parsing dialog.  Two shapes sharing the same hex color string get the
+    same pindex and will be assigned to the same filament slot.
     """
-    # Assign resource IDs: one basematerials per colored shape, then the objects
-    mat_id_counter = 1
-    mat_ids: list[int | None] = []
-    basematerials_parts: list[str] = []
-
+    # Deduplicate colours in order of first appearance.
+    color_order: list[str] = []
+    color_index: dict[str, int] = {}
     for _, name, color in shapes:
-        if color is not None:
-            basematerials_parts.append(
-                f'    <basematerials id="{mat_id_counter}">\n'
-                f'      <base name="{name}" displaycolor="{color}"/>\n'
-                f'    </basematerials>'
-            )
-            mat_ids.append(mat_id_counter)
-            mat_id_counter += 1
-        else:
-            mat_ids.append(None)
+        if color is not None and color not in color_index:
+            color_index[color] = len(color_order)
+            color_order.append(color)
 
-    obj_id_start = mat_id_counter  # object IDs begin after all basematerials
+    # Build the m:colorgroup resource (id=1).
+    colorgroup_xml = ""
+    if color_order:
+        entries = "\n      ".join(
+            f'<m:color name="filament{i + 1}" color="{_to_rgba(c)}"/>'
+            for i, c in enumerate(color_order)
+        )
+        colorgroup_xml = f'    <m:colorgroup id="1">\n      {entries}\n    </m:colorgroup>\n'
 
+    # Objects start at id=2 (id=1 is the colorgroup).
+    obj_id_start = 2
     objects_xml = "\n".join(
-        _shape_to_xml(shape, obj_id_start + i, name, mat_ids[i])
-        for i, (shape, name, _) in enumerate(shapes)
+        _shape_to_xml(
+            shape, obj_id_start + i, name,
+            pid=1 if color is not None else None,
+            pindex=color_index.get(color) if color is not None else None,
+        )
+        for i, (shape, name, color) in enumerate(shapes)
     )
     items_xml = "\n  ".join(
         f'<item objectid="{obj_id_start + i}"/>' for i in range(len(shapes))
     )
-    basematerials_xml = ("\n".join(basematerials_parts) + "\n") if basematerials_parts else ""
 
     model = f"""\
 <?xml version="1.0" encoding="UTF-8"?>
 <model unit="millimeter" xml:lang="en-US"
-  xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+  xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
+  xmlns:m="{_MATERIALS_NS}">
   <resources>
-{basematerials_xml}{objects_xml}
+{colorgroup_xml}{objects_xml}
   </resources>
   <build>
   {items_xml}
