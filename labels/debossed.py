@@ -12,7 +12,7 @@ CHAMFER = 0.2
 TEXT_DEPTH = 0.4
 
 
-def build(text: str, params: dict, tmf_path: str, stl_path: str) -> None:
+def build(text: str, params: dict, tmf_path: str, base_stl_path: str, text_stl_path: str | None = None) -> None:
     base_part = build_base(params, CORNER_RADIUS, CHAMFER)
     top_face = base_part.faces().sort_by(Axis.Z)[-1]
 
@@ -24,8 +24,9 @@ def build(text: str, params: dict, tmf_path: str, stl_path: str) -> None:
 
     # Move fill piece down so it sits inside the base, flush with the top surface
     text_fill = text_above.part.moved(Location(Vector(0, 0, -TEXT_DEPTH)))
-
     base_with_recess = base_part.part - text_fill
 
-    export_3mf([(base_with_recess, "base"), (text_fill, "text")], tmf_path)
-    export_stl(base_with_recess, stl_path)
+    export_3mf([(base_with_recess, "base", "#FFFFFF"), (text_fill, "text", "#000000")], tmf_path)
+    export_stl(base_with_recess, base_stl_path)
+    if text_stl_path is not None:
+        export_stl(text_fill, text_stl_path)

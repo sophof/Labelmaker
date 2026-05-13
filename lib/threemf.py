@@ -40,7 +40,7 @@ def _parse_binary_stl(data: bytes):
     return vertices, triangles
 
 
-def _shape_to_xml(shape: Shape, obj_id: int, name: str) -> str:
+def _shape_to_xml(shape: Shape, obj_id: int, name: str, pid: int | None = None, pindex: int | None = None) -> str:
     with tempfile.NamedTemporaryFile(suffix=".stl", delete=False) as f:
         tmp = f.name
     export_stl(shape, tmp)
@@ -55,8 +55,9 @@ def _shape_to_xml(shape: Shape, obj_id: int, name: str) -> str:
     tris = "\n        ".join(
         f'<triangle v1="{t[0]}" v2="{t[1]}" v3="{t[2]}"/>' for t in triangles
     )
+    color_attrs = f' pid="{pid}" pindex="{pindex}"' if pid is not None else ""
     return f"""\
-    <object id="{obj_id}" name="{name}" type="model">
+    <object id="{obj_id}" name="{name}" type="model"{color_attrs}>
       <mesh>
         <vertices>
         {verts}
@@ -68,21 +69,44 @@ def _shape_to_xml(shape: Shape, obj_id: int, name: str) -> str:
     </object>"""
 
 
-def export_3mf(shapes: list[tuple[Shape, str]], output_path: str) -> None:
-    """Write a 3MF file with one component per (shape, name) pair."""
-    objects_xml = "\n".join(
-        _shape_to_xml(shape, idx + 1, name)
-        for idx, (shape, name) in enumerate(shapes)
-    )
+def export_3mf(shapes: list[tuple[Shape, str, str | None]], output_path: str) -> None:
+    """Write a 3MF file with one component per (shape, name, color) tuple.
+
+    color is an optional hex string like '#FFFFFF'. When any color is provided,
+    a colorgroup is written using the 3MF Materials extension.
+    """
+    unique_colors = list(dict.fromkeys(c for _, _, c in shapes if c is not None))
+    has_colors = bool(unique_colors)
+    color_index = {c: i for i, c in enumerate(unique_colors)}
+
+    # colorgroup occupies id=1 when present; objects start after it
+    id_offset = 2 if has_colors else 1
+
+    objects_xml_parts = []
+    for idx, (shape, name, color) in enumerate(shapes):
+        pid = pindex = None
+        if has_colors and color is not None:
+            pid, pindex = 1, color_index[color]
+        objects_xml_parts.append(_shape_to_xml(shape, idx + id_offset, name, pid, pindex))
+
+    objects_xml = "\n".join(objects_xml_parts)
     items_xml = "\n  ".join(
-        f'<item objectid="{idx + 1}"/>' for idx in range(len(shapes))
+        f'<item objectid="{idx + id_offset}"/>' for idx in range(len(shapes))
     )
+
+    xmlns_m = ""
+    colorgroup_xml = ""
+    if has_colors:
+        xmlns_m = '\n  xmlns:m="http://schemas.microsoft.com/3dmanufacturing/material/2015/02"'
+        color_entries = "\n      ".join(f'<m:color color="{c}"/>' for c in unique_colors)
+        colorgroup_xml = f'    <m:colorgroup id="1">\n      {color_entries}\n    </m:colorgroup>\n'
+
     model = f"""\
 <?xml version="1.0" encoding="UTF-8"?>
 <model unit="millimeter" xml:lang="en-US"
-  xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+  xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"{xmlns_m}>
   <resources>
-{objects_xml}
+{colorgroup_xml}{objects_xml}
   </resources>
   <build>
   {items_xml}

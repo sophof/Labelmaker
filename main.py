@@ -50,14 +50,18 @@ def generate(req: GenerateParams):
 
     file_id = str(uuid.uuid4())
     tmf_path = os.path.join(GENERATED_DIR, f"{file_id}.3mf")
-    stl_path = os.path.join(GENERATED_DIR, f"{file_id}.stl")
+    base_stl_path = os.path.join(GENERATED_DIR, f"{file_id}_base.stl")
+    text_stl_path = os.path.join(GENERATED_DIR, f"{file_id}_text.stl")
 
-    style.build(req.text, req.params, tmf_path, stl_path)
+    style.build(req.text, req.params, tmf_path, base_stl_path, text_stl_path)
 
-    return {
+    response = {
         "3mf_url": f"/download/{file_id}.3mf",
-        "stl_url": f"/download/{file_id}.stl",
+        "base_stl_url": f"/download/{file_id}_base.stl",
     }
+    if os.path.exists(text_stl_path):
+        response["text_stl_url"] = f"/download/{file_id}_text.stl"
+    return response
 
 
 @app.get("/download/{filename}")
