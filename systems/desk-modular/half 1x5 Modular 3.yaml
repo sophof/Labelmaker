@@ -1,15 +1,5 @@
 name: 1x5 half-width bin Modular 3
-labels:
-  - style: debossed
-    params:
-      width: 90.8
-      height: 16
-      depth: 1
-      font_size: 6
-  - style: embossed
-    params:
-      width: 90.8
-      height: 16
-      depth: 1
-      font_size: 6
-
+params:
+  width: 90.8
+  height: 16
+  depth: 1

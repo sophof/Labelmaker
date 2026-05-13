@@ -73,7 +73,7 @@
     <label>Box type</label>
     <select id="box-select" onchange="onBoxChange()"></select>
   </div>
-  <div class="field">
+  <div class="field" id="style-field">
     <label>Label style</label>
     <select id="style-select" onchange="onStyleChange()"></select>
   </div>
@@ -212,10 +212,12 @@ window.onBoxChange = function() {
   const boxId = document.getElementById('box-select').value;
   const sys = systemsData.find(s => s.id === sysId);
   const box = sys?.boxes.find(b => b.id === boxId);
+  const labels = box?.labels || [];
   const styleSelect = document.getElementById('style-select');
-  styleSelect.innerHTML = (box?.labels || []).map(l =>
+  styleSelect.innerHTML = labels.map(l =>
     `<option value="${l.style}">${l.style_name}</option>`
   ).join('');
+  document.getElementById('style-field').style.display = labels.length > 1 ? '' : 'none';
   onStyleChange();
 };
 

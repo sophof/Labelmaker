@@ -28,15 +28,11 @@ def load_systems() -> list[dict]:
             with open(os.path.join(sys_path, box_file)) as f:
                 box_info = yaml.safe_load(f)
 
+            box_params = box_info.get("params", {})
             box_labels = []
-            for entry in box_info.get("labels", []):
-                style_id = entry["style"]
-                style = styles.get(style_id)
-                if style is None:
-                    continue
-                # Merge style param schema with yaml values
+            for style_id, style in styles.items():
                 merged_params = {
-                    key: {**schema, "value": entry.get("params", {}).get(key, schema["default"])}
+                    key: {**schema, "value": box_params.get(key, schema["default"])}
                     for key, schema in style["params"].items()
                 }
                 box_labels.append({

@@ -2,16 +2,21 @@ from build123d import Axis, BuildPart, BuildSketch, RectangleRounded, Solid, cha
 
 FONTS = ["Impact", "Arial", "DejaVu Sans", "Liberation Sans", "Verdana", "Courier New"]
 
-PARAMS = {
+TEXT_PARAMS = {
     "font":             {"type": "str",   "default": "Impact", "label": "Font", "options": FONTS},
     "font_size":        {"type": "float", "default": 6.0,  "unit": "mm", "label": "Font size"},
-    "width":            {"type": "float", "default": 60.0, "unit": "mm", "label": "Width"},
-    "height":           {"type": "float", "default": 20.0, "unit": "mm", "label": "Height"},
-    "depth":            {"type": "float", "default": 1.0,  "unit": "mm", "label": "Depth"},
     "column_separator": {"type": "str",   "default": "|",   "label": "Column separator"},
 }
 
+BASE_PARAMS = {
+    "width":  {"type": "float", "default": 60.0, "unit": "mm", "label": "Width"},
+    "height": {"type": "float", "default": 20.0, "unit": "mm", "label": "Height"},
+    "depth":  {"type": "float", "default": 1.0,  "unit": "mm", "label": "Depth"},
+}
+
 LINE_SPACING_FACTOR = 1.3
+DIVIDER_WIDTH = 0.4
+DIVIDER_CLEARANCE = 2.0
 
 
 def iter_text_blocks(text: str, params: dict) -> list[tuple[str, float, float]]:
@@ -35,7 +40,6 @@ def iter_text_blocks(text: str, params: dict) -> list[tuple[str, float, float]]:
     result = []
     for col_idx, col_text in enumerate(columns):
         x = -params["width"] / 2 + (col_idx + 0.5) * col_width
-
         lines = col_text.split("\n")
         num_lines = len(lines)
         for line_idx, line in enumerate(lines):
@@ -45,19 +49,14 @@ def iter_text_blocks(text: str, params: dict) -> list[tuple[str, float, float]]:
     return result
 
 
-DIVIDER_WIDTH = 0.4
-DIVIDER_CLEARANCE = 2.0
-
-
 def divider_positions(text: str, params: dict) -> list[float]:
     """Return the X centre of each vertical divider bar between columns."""
     separator = params.get("column_separator", "")
     if not separator or separator not in text:
         return []
     columns = text.split(separator)
-    num_cols = len(columns)
-    col_width = params["width"] / num_cols
-    return [-params["width"] / 2 + (i + 1) * col_width for i in range(num_cols - 1)]
+    col_width = params["width"] / len(columns)
+    return [-params["width"] / 2 + (i + 1) * col_width for i in range(len(columns) - 1)]
 
 
 def build_base(params: dict, corner_radius: float, chamfer_size: float) -> Solid:
