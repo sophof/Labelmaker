@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 import labels as label_registry
+from config import BASE_COLOR, TEXT_COLOR
 from systems import load_systems
 
 GENERATED_DIR = "generated"
@@ -53,11 +54,13 @@ def generate(req: GenerateParams):
     base_stl_path = os.path.join(GENERATED_DIR, f"{file_id}_base.stl")
     text_stl_path = os.path.join(GENERATED_DIR, f"{file_id}_text.stl")
 
-    style.build(req.text, req.params, tmf_path, base_stl_path, text_stl_path)
+    style.build(req.text, req.params, tmf_path, base_stl_path, text_stl_path, BASE_COLOR, TEXT_COLOR)
 
     response = {
         "3mf_url": f"/download/{file_id}.3mf",
         "base_stl_url": f"/download/{file_id}_base.stl",
+        "base_color": BASE_COLOR,
+        "text_color": TEXT_COLOR,
     }
     if os.path.exists(text_stl_path):
         response["text_stl_url"] = f"/download/{file_id}_text.stl"
@@ -66,6 +69,8 @@ def generate(req: GenerateParams):
 
 @app.get("/download/{filename}")
 def download(filename: str):
+    if filename != os.path.basename(filename):
+        raise HTTPException(status_code=400, detail="Invalid filename")
     path = os.path.join(GENERATED_DIR, filename)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")

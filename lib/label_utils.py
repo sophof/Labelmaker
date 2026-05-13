@@ -1,6 +1,11 @@
-from build123d import Axis, BuildPart, BuildSketch, RectangleRounded, chamfer, extrude
+from build123d import Axis, BuildPart, BuildSketch, Color, RectangleRounded, chamfer, extrude
 
 FONTS = ["Impact", "Arial", "DejaVu Sans", "Liberation Sans", "Verdana", "Courier New"]
+
+
+def hex_to_color(hex_str: str) -> Color:
+    r, g, b = (int(hex_str[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    return Color(r, g, b)
 
 PARAMS = {
     "font":      {"type": "str",   "default": "Impact", "label": "Font", "options": FONTS},

@@ -142,11 +142,14 @@ resize();
 
 const loader = new STLLoader();
 const matBase = new THREE.MeshPhongMaterial({ color: 0xffffff });
-const matText = new THREE.MeshPhongMaterial({ color: 0x111111 });
+const matText = new THREE.MeshPhongMaterial({ color: 0x000000 });
 
-window.loadSTLs = function(baseUrl, textUrl) {
+window.loadSTLs = function(baseUrl, textUrl, baseColor, textColor) {
   if (meshBase) { scene.remove(meshBase); meshBase = null; }
   if (meshText) { scene.remove(meshText); meshText = null; }
+
+  matBase.color.set(baseColor);
+  matText.color.set(textColor);
 
   loader.load(baseUrl, geo => {
     geo.computeBoundingBox();
@@ -281,7 +284,7 @@ window.generate = async function() {
     }
 
     const data = await res.json();
-    window.loadSTLs(data.base_stl_url, data.text_stl_url);
+    window.loadSTLs(data.base_stl_url, data.text_stl_url, data.base_color, data.text_color);
     dlBtn.href = data['3mf_url'];
     dlBtn.style.display = 'block';
     exportBtn.style.display = 'block';
