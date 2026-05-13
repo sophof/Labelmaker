@@ -1,0 +1,15 @@
+name: 2x5 half-width bin Modular 4
+labels:
+  - style: debossed
+    params:
+      width: 41.4
+      height: 16
+      depth: 1
+      font_size: 6
+  - style: embossed
+    params:
+      width: 41.4
+      height: 16
+      depth: 1
+      font_size: 6
+

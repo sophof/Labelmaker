@@ -1,6 +1,7 @@
-from build123d import Align, Axis, BuildPart, BuildSketch, Mesher, Plane, Text, export_stl, extrude
+from build123d import Align, Axis, BuildPart, BuildSketch, Plane, Text, export_stl, extrude
 
-from lib.label_utils import PARAMS, build_base, hex_to_color
+from lib.label_utils import PARAMS, build_base
+from lib.build_3mf import export_3mf
 
 STYLE_ID = "debossed-open"
 STYLE_NAME = "Debossed open (recessed cutout)"
@@ -13,19 +14,18 @@ TEXT_DEPTH = 0.4
 
 def build(text: str, params: dict, tmf_path: str, base_stl_path: str,
           text_stl_path: str | None = None, base_color: str = "#FFFFFF", text_color: str = "#000000") -> None:
-    base_part = build_base(params, CORNER_RADIUS, CHAMFER)
-    top_face = base_part.faces().sort_by(Axis.Z)[-1]
+    base = build_base(params, CORNER_RADIUS, CHAMFER)
+    top_face = base.faces().sort_by(Axis.Z)[-1]
 
     with BuildPart() as text_part:
         with BuildSketch(Plane(top_face)):
             Text(text, font_size=params["font_size"], font=params["font"], align=(Align.CENTER, Align.CENTER))
         extrude(amount=-TEXT_DEPTH)
 
-    base_with_recess = base_part.part - text_part.part
-    base_with_recess.label, base_with_recess.color = "base", hex_to_color(base_color)
+    # Subtract each glyph solid individually
+    base_with_recess = base
+    for glyph in text_part.solids():
+        base_with_recess = base_with_recess - glyph
 
-    mesher = Mesher()
-    mesher.add_shape(base_with_recess)
-    mesher.write(tmf_path)
-
+    export_3mf([(base_with_recess, "base", base_color)], tmf_path)
     export_stl(base_with_recess, base_stl_path)

@@ -1,11 +1,6 @@
-from build123d import Axis, BuildPart, BuildSketch, Color, RectangleRounded, chamfer, extrude
+from build123d import Axis, BuildPart, BuildSketch, RectangleRounded, Solid, chamfer, extrude
 
 FONTS = ["Impact", "Arial", "DejaVu Sans", "Liberation Sans", "Verdana", "Courier New"]
-
-
-def hex_to_color(hex_str: str) -> Color:
-    r, g, b = (int(hex_str[i:i + 2], 16) / 255 for i in (1, 3, 5))
-    return Color(r, g, b)
 
 PARAMS = {
     "font":      {"type": "str",   "default": "Impact", "label": "Font", "options": FONTS},
@@ -16,7 +11,7 @@ PARAMS = {
 }
 
 
-def build_base(params: dict, corner_radius: float, chamfer_size: float) -> BuildPart:
+def build_base(params: dict, corner_radius: float, chamfer_size: float) -> Solid:
     with BuildPart() as base_part:
         with BuildSketch():
             RectangleRounded(params["width"], params["height"], corner_radius)
@@ -24,4 +19,4 @@ def build_base(params: dict, corner_radius: float, chamfer_size: float) -> Build
         top_edges = base_part.faces().sort_by(Axis.Z)[-1].edges()
         bot_edges = base_part.faces().sort_by(Axis.Z)[0].edges()
         chamfer(top_edges + bot_edges, length=chamfer_size)
-    return base_part
+    return base_part.solids()[0]

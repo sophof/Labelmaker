@@ -1,6 +1,7 @@
-from build123d import Align, Axis, BuildPart, BuildSketch, Location, Mesher, Plane, Text, Vector, export_stl, extrude
+from build123d import Align, Axis, BuildPart, BuildSketch, Location, Plane, Text, Vector, export_stl, extrude
 
-from lib.label_utils import PARAMS, build_base, hex_to_color
+from lib.label_utils import PARAMS, build_base
+from lib.build_3mf import export_3mf
 
 STYLE_ID = "debossed"
 STYLE_NAME = "Debossed (two-color inlay)"
@@ -13,27 +14,25 @@ TEXT_DEPTH = 0.4
 
 def build(text: str, params: dict, tmf_path: str, base_stl_path: str,
           text_stl_path: str | None = None, base_color: str = "#FFFFFF", text_color: str = "#000000") -> None:
-    base_part = build_base(params, CORNER_RADIUS, CHAMFER)
-    top_face = base_part.faces().sort_by(Axis.Z)[-1]
+    base = build_base(params, CORNER_RADIUS, CHAMFER)
+    top_face = base.faces().sort_by(Axis.Z)[-1]
 
     # Extrude text upward (positive direction = correct outward normals)
-    with BuildPart() as text_above:
+    with BuildPart() as text_part:
         with BuildSketch(Plane(top_face)):
             Text(text, font_size=params["font_size"], font=params["font"], align=(Align.CENTER, Align.CENTER))
         extrude(amount=TEXT_DEPTH)
 
-    # Move fill piece down so it sits inside the base, flush with the top surface
-    text_fill = text_above.part.moved(Location(Vector(0, 0, -TEXT_DEPTH)))
-    base_with_recess = base_part.part - text_fill
+    # Move the whole text compound down so it sits inside the base, flush with the top surface
+    text_fill = text_part.part.moved(Location(Vector(0, 0, -TEXT_DEPTH)))
 
-    base_with_recess.label, base_with_recess.color = "base", hex_to_color(base_color)
-    text_fill.label, text_fill.color = "text", hex_to_color(text_color)
+    # Subtract each glyph solid individually — safe regardless of whether
+    # OCC's BooleanCut handles Compound tools correctly
+    base_with_recess = base
+    for glyph in text_fill.solids():
+        base_with_recess = base_with_recess - glyph
 
-    mesher = Mesher()
-    mesher.add_shape(base_with_recess)
-    mesher.add_shape(text_fill)
-    mesher.write(tmf_path)
-
+    export_3mf([(base_with_recess, "base", base_color), (text_fill, "text", text_color)], tmf_path)
     export_stl(base_with_recess, base_stl_path)
     if text_stl_path is not None:
         export_stl(text_fill, text_stl_path)
