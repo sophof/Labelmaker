@@ -1,0 +1,8 @@
+.venv/
+generated/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.idea/
+.claude/

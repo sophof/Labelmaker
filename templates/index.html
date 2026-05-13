@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Label Maker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; display: flex; height: 100vh; background: #1a1a1a; color: #eee; }
+
+    #sidebar {
+      width: 280px; min-width: 280px; padding: 24px;
+      background: #242424; display: flex; flex-direction: column; gap: 16px;
+      overflow-y: auto;
+    }
+    h1 { font-size: 1.2rem; color: #fff; }
+
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    label { font-size: 0.8rem; color: #aaa; }
+    input[type="text"], input[type="number"] {
+      background: #333; border: 1px solid #444; color: #eee;
+      padding: 6px 10px; border-radius: 4px; font-size: 0.95rem; width: 100%;
+    }
+    input:focus { outline: none; border-color: #888; }
+
+    button#generate-btn {
+      background: #2563eb; color: #fff; border: none;
+      padding: 10px; border-radius: 6px; font-size: 1rem;
+      cursor: pointer; margin-top: 8px;
+    }
+    button#generate-btn:hover { background: #1d4ed8; }
+    button#generate-btn:disabled { background: #444; cursor: default; }
+
+    #download-btn {
+      display: none; text-align: center;
+      background: #16a34a; color: #fff; text-decoration: none;
+      padding: 10px; border-radius: 6px; font-size: 1rem;
+    }
+    #download-btn:hover { background: #15803d; }
+
+    #status { font-size: 0.8rem; color: #aaa; min-height: 1.2em; }
+
+    #preview { flex: 1; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>Label Maker</h1>
+
+  <div class="field">
+    <label>Text</label>
+    <input type="text" id="text" value="Resistors" />
+  </div>
+  <div class="field">
+    <label>Width (mm)</label>
+    <input type="number" id="width" value="60" step="1" />
+  </div>
+  <div class="field">
+    <label>Height (mm)</label>
+    <input type="number" id="height" value="20" step="1" />
+  </div>
+  <div class="field">
+    <label>Depth (mm)</label>
+    <input type="number" id="depth" value="3" step="0.5" />
+  </div>
+  <div class="field">
+    <label>Font size (mm)</label>
+    <input type="number" id="font_size" value="8" step="0.5" />
+  </div>
+  <div class="field">
+    <label>Text raise (mm)</label>
+    <input type="number" id="text_depth" value="1" step="0.25" />
+  </div>
+
+  <button id="generate-btn" onclick="generate()">Generate</button>
+  <a id="download-btn" download>Download 3MF</a>
+  <div id="status"></div>
+</div>
+
+<div id="preview"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container = document.getElementById('preview');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setClearColor(0x1a1a1a);
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+camera.position.set(0, -80, 60);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+dir.position.set(1, -1, 2);
+scene.add(dir);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+let mesh = null;
+
+function resize() {
+  const w = container.clientWidth, h = container.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(container);
+resize();
+
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+
+const loader = new STLLoader();
+const material = new THREE.MeshPhongMaterial({ color: 0xaaaacc });
+
+window.loadSTL = function(url) {
+  loader.load(url, geometry => {
+    if (mesh) scene.remove(mesh);
+    geometry.computeBoundingBox();
+    const center = new THREE.Vector3();
+    geometry.boundingBox.getCenter(center);
+    geometry.translate(-center.x, -center.y, -center.z);
+    mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+  });
+};
+
+window.generate = async function() {
+  const btn = document.getElementById('generate-btn');
+  const status = document.getElementById('status');
+  const dlBtn = document.getElementById('download-btn');
+
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  status.textContent = '';
+  dlBtn.style.display = 'none';
+
+  try {
+    const params = {
+      text:       document.getElementById('text').value,
+      width:      parseFloat(document.getElementById('width').value),
+      height:     parseFloat(document.getElementById('height').value),
+      depth:      parseFloat(document.getElementById('depth').value),
+      font_size:  parseFloat(document.getElementById('font_size').value),
+      text_depth: parseFloat(document.getElementById('text_depth').value),
+      label_type: 'flat',
+    };
+
+    const res = await fetch('/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || res.statusText);
+    }
+
+    const data = await res.json();
+    window.loadSTL(data.stl_url);
+
+    dlBtn.href = data['3mf_url'];
+    dlBtn.style.display = 'block';
+    status.textContent = 'Done.';
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate';
+  }
+};
+</script>
+
+</body>
+</html>
