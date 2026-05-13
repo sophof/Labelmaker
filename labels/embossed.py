@@ -1,6 +1,6 @@
-from build123d import Align, Axis, BuildPart, BuildSketch, Locations, Plane, Text, export_stl, extrude
+from build123d import Align, Axis, BuildPart, BuildSketch, Locations, Plane, Rectangle, Text, export_stl, extrude
 
-from lib.label_utils import PARAMS, build_base, iter_text_blocks
+from lib.label_utils import DIVIDER_CLEARANCE, DIVIDER_WIDTH, PARAMS, build_base, divider_positions, iter_text_blocks
 from lib.build_3mf import export_3mf
 
 STYLE_ID = "embossed"
@@ -22,6 +22,11 @@ def build(text: str, params: dict, tmf_path: str, base_stl_path: str,
             with BuildSketch(Plane(top_face)):
                 with Locations([(x, y)]):
                     Text(line, font_size=params["font_size"], font=params["font"], align=(Align.CENTER, Align.CENTER))
+            extrude(amount=TEXT_DEPTH)
+        for div_x in divider_positions(text, params):
+            with BuildSketch(Plane(top_face)):
+                with Locations([(div_x, 0)]):
+                    Rectangle(DIVIDER_WIDTH, params["height"] - 2 * DIVIDER_CLEARANCE)
             extrude(amount=TEXT_DEPTH)
     txt = text_part.part
 

@@ -45,6 +45,21 @@ def iter_text_blocks(text: str, params: dict) -> list[tuple[str, float, float]]:
     return result
 
 
+DIVIDER_WIDTH = 0.4
+DIVIDER_CLEARANCE = 2.0
+
+
+def divider_positions(text: str, params: dict) -> list[float]:
+    """Return the X centre of each vertical divider bar between columns."""
+    separator = params.get("column_separator", "")
+    if not separator or separator not in text:
+        return []
+    columns = text.split(separator)
+    num_cols = len(columns)
+    col_width = params["width"] / num_cols
+    return [-params["width"] / 2 + (i + 1) * col_width for i in range(num_cols - 1)]
+
+
 def build_base(params: dict, corner_radius: float, chamfer_size: float) -> Solid:
     with BuildPart() as base_part:
         with BuildSketch():
