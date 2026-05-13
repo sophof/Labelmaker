@@ -75,13 +75,14 @@ def generate(req: GenerateParams):
     base_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_label_base.stl")
     text_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_label_text.stl")
 
-    style.build(req.text, req.params, tmf_path, base_stl_path, text_stl_path, BASE_COLOR, TEXT_COLOR)
+    warnings = style.build(req.text, req.params, tmf_path, base_stl_path, text_stl_path, BASE_COLOR, TEXT_COLOR)
 
     response = {
         "3mf_url": f"/download/{session_id}_label.3mf",
         "base_stl_url": f"/download/{session_id}_label_base.stl",
         "base_color": BASE_COLOR,
         "text_color": TEXT_COLOR,
+        "warnings": warnings,
     }
     if os.path.exists(text_stl_path):
         response["text_stl_url"] = f"/download/{session_id}_label_text.stl"

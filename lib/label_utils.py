@@ -3,12 +3,46 @@ from build123d import Axis, BuildPart, BuildSketch, RectangleRounded, Solid, cha
 FONTS = ["Impact", "Arial", "DejaVu Sans", "Liberation Sans", "Verdana", "Courier New"]
 
 PARAMS = {
-    "font":      {"type": "str",   "default": "Impact", "label": "Font", "options": FONTS},
-    "font_size": {"type": "float", "default": 6.0,  "unit": "mm", "label": "Font size"},
-    "width":     {"type": "float", "default": 60.0, "unit": "mm", "label": "Width"},
-    "height":    {"type": "float", "default": 20.0, "unit": "mm", "label": "Height"},
-    "depth":     {"type": "float", "default": 3.0,  "unit": "mm", "label": "Depth"},
+    "font":             {"type": "str",   "default": "Impact", "label": "Font", "options": FONTS},
+    "font_size":        {"type": "float", "default": 6.0,  "unit": "mm", "label": "Font size"},
+    "width":            {"type": "float", "default": 60.0, "unit": "mm", "label": "Width"},
+    "height":           {"type": "float", "default": 20.0, "unit": "mm", "label": "Height"},
+    "depth":            {"type": "float", "default": 1.0,  "unit": "mm", "label": "Depth"},
+    "column_separator": {"type": "str",   "default": "|",   "label": "Column separator"},
 }
+
+LINE_SPACING_FACTOR = 1.3
+
+
+def iter_text_blocks(text: str, params: dict) -> list[tuple[str, float, float]]:
+    """Return (line_text, x_offset, y_offset) for every line in every column.
+
+    Splits on column_separator first (if set), then on newlines within each column.
+    All offsets are relative to the label center.
+    """
+    separator = params.get("column_separator", "")
+    font_size = params["font_size"]
+    line_spacing = font_size * LINE_SPACING_FACTOR
+
+    if separator and separator in text:
+        columns = [c.strip() for c in text.split(separator)]
+    else:
+        columns = [text]
+
+    num_cols = len(columns)
+    col_width = params["width"] / num_cols
+
+    result = []
+    for col_idx, col_text in enumerate(columns):
+        x = -params["width"] / 2 + (col_idx + 0.5) * col_width
+
+        lines = col_text.split("\n")
+        num_lines = len(lines)
+        for line_idx, line in enumerate(lines):
+            y = (num_lines - 1) / 2 * line_spacing - line_idx * line_spacing
+            result.append((line.strip(), x, y))
+
+    return result
 
 
 def build_base(params: dict, corner_radius: float, chamfer_size: float) -> Solid:
