@@ -86,6 +86,6 @@ Single-page app. On load, fetches `/systems` and populates:
 - `uv` is at `/home/kingmob/.local/bin/uv`
 
 ## System dependencies
-All system-level packages required by this project are tracked in `setup.sh`. Whenever a new `apt`
-dependency is discovered during development, add it to the `apt install` line in `setup.sh` so the
-script stays complete and a fresh LXC can be set up from scratch by running it.
+All system-level packages required by this project are tracked in `deploy/install.sh`. Whenever a
+new `apt` dependency is discovered during development, add it to the `apt install` line in
+`deploy/install.sh` so the script stays complete and a fresh LXC can be set up from scratch.
