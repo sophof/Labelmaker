@@ -52,11 +52,13 @@ class GenerateParams(BaseModel):
     text: str
     style: str
     params: dict[str, float | str]
+    base_color: str = BASE_COLOR
+    text_color: str = TEXT_COLOR
 
 
 @app.get("/")
 def index(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+    return templates.TemplateResponse(request, "index.html", {"base_color": BASE_COLOR, "text_color": TEXT_COLOR})
 
 
 @app.get("/systems")
@@ -79,15 +81,15 @@ def generate(req: GenerateParams):
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        parts = style.build(req.text, req.params, BASE_COLOR, TEXT_COLOR)
+        parts = style.build(req.text, req.params, req.base_color, req.text_color)
 
     export_label(parts, tmf_path, base_stl_path, text_stl_path)
 
     response = {
         "3mf_url": f"/download/{session_id}_label.3mf",
         "base_stl_url": f"/download/{session_id}_label_base.stl",
-        "base_color": BASE_COLOR,
-        "text_color": TEXT_COLOR,
+        "base_color": req.base_color,
+        "text_color": req.text_color,
         "warnings": [str(w.message) for w in caught],
     }
     if len(parts) > 1:
