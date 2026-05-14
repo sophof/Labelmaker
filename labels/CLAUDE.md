@@ -10,7 +10,7 @@ labels/
   __init__.py        — scans styles/ and registers all styles by STYLE_ID
 ```
 
-The key separation: **helpers build geometry**, **styles define label types**, **label_geometry.py defines the shared contract**.
+The key separation: **helpers build geometry**, **styles define label types**, **label_style.py defines the shared contract**.
 A style subclasses LabelStyle and returns a list of ColoredParts from build(). Helpers never import from styles/ and never write files.
 
 ## Adding a new label style
