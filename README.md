@@ -10,7 +10,7 @@ Run this on your Proxmox host:
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/sophof/Labelmaker/main/deploy/create-lxc.sh)"
 ```
 
-This creates a Debian 13 LXC container, installs all dependencies, and starts the service. You will be prompted to select a storage pool. Once complete, the UI is accessible at `http://<container-ip>:8000`.
+This creates a Debian 13 LXC container, installs all dependencies, and starts the service. You will be prompted to select a storage pool. Once complete, the UI is accessible at `http://<container-ip>`. The port defaults to 80 and can be changed in `config.yaml`.
 
 ## Update an existing installation
 

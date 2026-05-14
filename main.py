@@ -11,8 +11,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+import uvicorn
+
 import labels as label_registry
-from config import BASE_COLOR, TEXT_COLOR
+from config import BASE_COLOR, PORT, TEXT_COLOR
 from lib.export import export_label
 from systems import load_systems
 
@@ -112,3 +114,7 @@ def download(filename: str, background_tasks: BackgroundTasks):
         background_tasks.add_task(cleanup_session, session_id)
 
     return FileResponse(path)
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=PORT)

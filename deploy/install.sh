@@ -54,7 +54,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/labelmaker
-ExecStart=/opt/labelmaker/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+ExecStart=/opt/labelmaker/.venv/bin/python /opt/labelmaker/main.py
 Restart=always
 RestartSec=3
 
@@ -86,5 +86,6 @@ echo "Labelmaker updated."
 EOF
 chmod +x /usr/bin/update
 
+PORT=$(/opt/labelmaker/.venv/bin/python -c "from config import PORT; print(PORT)")
 echo ""
-echo "Labelmaker is running on port 8000."
+echo "Labelmaker is running on port $PORT."

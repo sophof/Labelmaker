@@ -80,7 +80,7 @@ Single-page app. On load, fetches `/systems` and populates:
 
 ## Environment
 - LXC on Proxmox, project at `/opt/labelmaker`
-- Run dev server: `.venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000`
+- Run dev server: `.venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000` (port override for dev; production uses `port` from `config.yaml` via `python main.py`)
 - Access from local network at `http://<lxc-ip>:8000`
 - IDE: VS Code with the Claude Code extension (SSH remote into the LXC)
 - `uv` is at `/home/kingmob/.local/bin/uv`
