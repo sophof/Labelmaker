@@ -3,9 +3,10 @@ import os
 
 _styles: dict = {}
 
-for _fname in os.listdir(os.path.dirname(__file__)):
+_styles_dir = os.path.join(os.path.dirname(__file__), "styles")
+for _fname in os.listdir(_styles_dir):
     if _fname.endswith(".py") and not _fname.startswith("_"):
-        _mod = importlib.import_module(f"labels.{_fname[:-3]}")
+        _mod = importlib.import_module(f"labels.styles.{_fname[:-3]}")
         if hasattr(_mod, "STYLE_ID"):
             _styles[_mod.STYLE_ID] = _mod
 

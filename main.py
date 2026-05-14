@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 import labels as label_registry
 from config import BASE_COLOR, TEXT_COLOR
+from lib.export import export_label
 from systems import load_systems
 
 GENERATED_DIR = "generated"
@@ -75,7 +76,8 @@ def generate(req: GenerateParams):
     base_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_label_base.stl")
     text_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_label_text.stl")
 
-    warnings = style.build(req.text, req.params, tmf_path, base_stl_path, text_stl_path, BASE_COLOR, TEXT_COLOR)
+    components, warnings = style.build(req.text, req.params, BASE_COLOR, TEXT_COLOR)
+    export_label(components, tmf_path, base_stl_path, text_stl_path)
 
     response = {
         "3mf_url": f"/download/{session_id}_label.3mf",
@@ -84,7 +86,7 @@ def generate(req: GenerateParams):
         "text_color": TEXT_COLOR,
         "warnings": warnings,
     }
-    if os.path.exists(text_stl_path):
+    if len(components) > 1:
         response["text_stl_url"] = f"/download/{session_id}_label_text.stl"
     return response
 

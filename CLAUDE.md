@@ -34,26 +34,12 @@ generate. Session files (base STL, text STL, 3MF) are deleted after the 3MF is d
 `BackgroundTasks`.
 
 ### Label styles (labels/)
-Each file in `labels/` defines one label geometry style. Current styles:
-- `label.py` — base label with text; text style (embossed / debossed / debossed-open) is a param
-- `bordered.py` — same as label but with a 1 mm accent-color border ring inlaid 0.4 mm deep
+Label logic is split into two concerns — see `labels/CLAUDE.md` for full details.
 
-A style module must expose:
-- `STYLE_ID: str` — unique identifier
-- `STYLE_NAME: str` — human-readable name
-- `PARAMS: dict` — parameter schema: `{key: {type, default, unit, label, options?}}`
-- `build(text, params, tmf_path, base_stl_path, text_stl_path=None, base_color="#FFFFFF", text_color="#000000") -> list[str]` — returns a list of warning strings (empty = success)
+- `labels/styles/` — one file per label style; auto-discovered at startup
+- `labels/helpers/` — shared geometry, text, and composition helpers (no file I/O)
 
-`labels/__init__.py` auto-discovers all non-underscore `.py` files at import time.
-**To add a new label style:** create a new `.py` file in `labels/`. No other files need changing.
-
-Shared geometry helpers live in `labels/_label_utils.py` (underscore prefix = not auto-discovered):
-- `build_base(params, corner_radius, chamfer_size)` — builds the chamfered rounded-rect base
-- `build_text_compound(top_face, text, params, depth)` — text + column dividers extruded from a face
-- `apply_text_and_export(...)` — central dispatch for embossed/debossed/debossed-open; handles
-  STL + 3MF export; accepts optional `accent_components` list for extra colored parts (e.g. border ring)
-- `overflow_warnings(text_compound, params)` — checks bounding box against label dimensions
-- `TEXT_PARAMS`, `BASE_PARAMS` — shared param schema dicts
+**To add a new label style:** drop a `.py` file in `labels/styles/`. No other files need changing.
 
 ### Storage systems and box types (systems/)
 The `systems/` folder is a data registry — no Python, just YAML.
@@ -80,10 +66,8 @@ and not shown as editable fields in the UI.
 **To add a new box type:** drop a `.yaml` file in the appropriate system folder.
 **To add a new storage system:** create a new subfolder with a `system.yaml` inside.
 
-### 3MF export (lib/build_3mf.py)
-Builds a standards-compliant 3MF from a list of `(shape, name, color)` tuples.
-Uses a single `m:colorgroup` resource with deduplicated colors; objects sharing the same hex
-color string get the same `pindex` and are merged into one filament slot by the slicer.
+### Infrastructure (lib/)
+File I/O and format logic — no label-specific geometry. See `lib/CLAUDE.md` for details.
 
 ### UI (templates/index.html)
 Single-page app. On load, fetches `/systems` and populates:
