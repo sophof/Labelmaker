@@ -45,12 +45,12 @@ STORAGE=$(whiptail --backtitle "Labelmaker Deployment" \
 echo "Using storage: $STORAGE"
 
 # --- Debian 12 template ---
-TEMPLATE=$(pveam list "$TMPL_STORAGE" 2>/dev/null | awk '{print $1}' | grep "debian-12" | sort -rV | head -1)
+TEMPLATE=$(pveam list "$TMPL_STORAGE" 2>/dev/null | awk '{print $1}' | grep "debian-13" | sort -rV | head -1)
 
 if [ -z "$TEMPLATE" ]; then
   echo "Debian 12 template not found, downloading..."
   pveam update
-  TMPL_NAME=$(pveam available --section system | grep "debian-12" | sort -rV | head -1)
+  TMPL_NAME=$(pveam available --section system | grep "debian-13" | sort -rV | head -1)
   if [ -z "$TMPL_NAME" ]; then
     echo "ERROR: Could not find a Debian 12 template. Run 'pveam update' and try again."
     exit 1
