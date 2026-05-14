@@ -12,8 +12,12 @@ def combine_geometry_and_text(
     accent_components: list[ColoredPart] | None = None,
 ) -> list[ColoredPart]:
     """Combine base geometry with text according to text_style, return colored parts."""
-    style = params.get("text_style", "debossed")
     accents = accent_components or []
+
+    if not text.strip():
+        return [ColoredPart(base, "base", base_color)] + accents
+
+    style = params.get("text_style", "debossed")
 
     if style == "embossed":
         txt = build_text_compound(top_face, text, params, text_depth)
