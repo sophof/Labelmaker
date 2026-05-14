@@ -28,12 +28,17 @@ def load_systems() -> list[dict]:
             with open(os.path.join(sys_path, box_file)) as f:
                 box_info = yaml.safe_load(f)
 
+            sys_side_margin = sys_info.get("side_margin", 0)
             box_params = box_info.get("params", {})
             box_labels = []
             for style_id, style in styles.items():
                 merged_params = {
                     key: {**schema, "value": box_params.get(key, schema["default"])}
                     for key, schema in style["params"].items()
+                }
+                merged_params["side_margin"] = {
+                    "type": "float", "label": "Side margin", "unit": "mm",
+                    "default": sys_side_margin, "value": sys_side_margin,
                 }
                 box_labels.append({
                     "style": style_id,

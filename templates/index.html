@@ -51,6 +51,8 @@
     #generate-btn { background: #2563eb; color: #fff; }
     #generate-btn:hover { background: #1d4ed8; }
     #generate-btn:disabled { background: #444; cursor: default; }
+    #download-btn.has-warning { background: #dc2626; }
+    #download-btn.has-warning:hover { background: #b91c1c; }
 
     #download-btn {
       display: none; text-align: center; text-decoration: none;
@@ -59,7 +61,7 @@
     #download-btn:hover { background: #15803d; }
 
     #status { font-size: 0.8rem; color: #aaa; min-height: 1.2em; }
-    #status.warning { color: #f59e0b; }
+    #status.warning { color: #fbbf24; font-size: 0.85rem; font-weight: 600; }
 
     #preview { flex: 1; }
     canvas { display: block; }
@@ -209,7 +211,7 @@ window.loadSTLs = function(baseUrl, textUrl, baseColor, textColor) {
 // --- System/box/style data ---
 let systemsData = [];
 let boxParams = {}; // fixed dimensions from the box YAML, passed to generate automatically
-const BOX_PARAM_KEYS = new Set(['width', 'height', 'depth']);
+const BOX_PARAM_KEYS = new Set(['width', 'height', 'depth', 'side_margin']);
 
 async function loadSystems() {
   const res = await fetch('/systems');
@@ -307,7 +309,10 @@ window.generate = async function() {
 
   btn.disabled = true;
   btn.textContent = 'Generating…';
+  dlBtn.classList.remove('has-warning');
+  dlBtn.textContent = 'Download 3MF';
   status.textContent = '';
+  status.className = '';
   dlBtn.style.display = 'none';
 
   try {
@@ -346,7 +351,9 @@ window.generate = async function() {
     dlBtn.style.display = 'block';
     if (data.warnings?.length) {
       status.className = 'warning';
-      status.textContent = data.warnings.join(' · ');
+      status.textContent = '⚠ ' + data.warnings.join(' · ');
+      dlBtn.classList.add('has-warning');
+      dlBtn.textContent = '⚠ Download 3MF';
     } else {
       status.className = '';
       status.textContent = 'Done.';
