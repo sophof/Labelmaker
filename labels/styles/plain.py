@@ -10,9 +10,9 @@ CHAMFER = 0.2
 TEXT_DEPTH = 0.4
 
 
-class Label(LabelStyle):
-    STYLE_ID = "label"
-    STYLE_NAME = "Label"
+class Plain(LabelStyle):
+    STYLE_ID = "plain"
+    STYLE_NAME = "Plain"
     PARAMS = {
         "text_style": {
             "type": "str",
