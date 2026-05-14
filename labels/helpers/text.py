@@ -58,11 +58,10 @@ def build_text_compound(top_face, text: str, params: dict, depth: float):
     return part.part
 
 
-def overflow_warnings(text_compound, params: dict) -> list[str]:
-    warnings = []
+def check_overflow(text_compound, params: dict) -> None:
+    import warnings
     bbox = text_compound.bounding_box()
     if bbox.size.X > params["width"]:
-        warnings.append("Text overflows label width")
+        warnings.warn("Text overflows label width")
     if bbox.size.Y > params["height"]:
-        warnings.append("Text overflows label height")
-    return warnings
+        warnings.warn("Text overflows label height")

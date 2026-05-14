@@ -2,6 +2,7 @@ import glob
 import os
 import time
 import uuid
+import warnings
 from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
@@ -76,17 +77,20 @@ def generate(req: GenerateParams):
     base_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_label_base.stl")
     text_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_label_text.stl")
 
-    components, warnings = style.build(req.text, req.params, BASE_COLOR, TEXT_COLOR)
-    export_label(components, tmf_path, base_stl_path, text_stl_path)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        parts = style.build(req.text, req.params, BASE_COLOR, TEXT_COLOR)
+
+    export_label(parts, tmf_path, base_stl_path, text_stl_path)
 
     response = {
         "3mf_url": f"/download/{session_id}_label.3mf",
         "base_stl_url": f"/download/{session_id}_label_base.stl",
         "base_color": BASE_COLOR,
         "text_color": TEXT_COLOR,
-        "warnings": warnings,
+        "warnings": [str(w.message) for w in caught],
     }
-    if len(components) > 1:
+    if len(parts) > 1:
         response["text_stl_url"] = f"/download/{session_id}_label_text.stl"
     return response
 

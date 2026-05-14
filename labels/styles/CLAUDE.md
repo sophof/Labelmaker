@@ -1,15 +1,15 @@
 # labels/styles/ — Label Style Definitions
 
-Each `.py` file here defines one label style and is auto-discovered by `labels/__init__.py`.
+Each `.py` file here defines one label style as a class subclassing `LabelStyle` (from `labels/label_style.py`). Styles are auto-discovered by `labels/__init__.py`.
 
-## Required module interface
+## Required interface
 
-Every style module must expose:
+Every style class must define:
 
-- `STYLE_ID: str` — unique identifier (used as the key in the API)
-- `STYLE_NAME: str` — human-readable name shown in the UI
-- `PARAMS: dict` — full parameter schema for this style: `{key: {type, default, unit, label, options?}}`
-- `build(text, params, base_color="#FFFFFF", text_color="#000000") -> tuple[list[tuple], list[str]]` — builds the label geometry and returns `(components, warnings)`. `components` is a list of `(shape, name, color)` tuples ready for export. No file I/O happens here.
+- `STYLE_ID: ClassVar[str]` — unique identifier (used as the key in the API)
+- `STYLE_NAME: ClassVar[str]` — human-readable name shown in the UI
+- `PARAMS: ClassVar[dict]` — full parameter schema: `{key: {type, default, unit, label, options?}}`
+- `build(text, params, base_color="#FFFFFF", text_color="#000000") -> list[ColoredPart]` — builds and returns the colored parts of the label. No file I/O. Overflow or other issues are issued via `warnings.warn()`.
 
 ## Conventions
 
