@@ -25,18 +25,6 @@ while pct status "$CTID" &>/dev/null || qm status "$CTID" &>/dev/null; do
 done
 echo "Using CT ID: $CTID"
 
-# --- Root password ---
-ROOT_PASSWORD=$(whiptail --backtitle "Labelmaker Deployment" \
-  --title "Root Password" \
-  --passwordbox "Set a root password for the container:" \
-  10 58 \
-  3>&1 1>&2 2>&3) || { echo "Cancelled."; exit 1; }
-
-if [ -z "$ROOT_PASSWORD" ]; then
-  echo "ERROR: Root password cannot be empty."
-  exit 1
-fi
-
 # --- Storage selection ---
 MENU_OPTIONS=()
 while read -r name _type _status _total _used _avail _pct; do

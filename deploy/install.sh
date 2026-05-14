@@ -35,6 +35,15 @@ fi
 cd "$INSTALL_DIR"
 uv sync
 
+# --- Console auto-login ---
+mkdir -p /etc/systemd/system/container-getty@1.service.d
+cat > /etc/systemd/system/container-getty@1.service.d/override.conf << 'EOF'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud tty%I
+EOF
+systemctl daemon-reload
+
 # --- Systemd service ---
 cat > /etc/systemd/system/labelmaker.service << 'EOF'
 [Unit]
