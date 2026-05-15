@@ -1,0 +1,6 @@
+name: Standard box
+params:
+  width: 49.4
+  height: 10
+  depth: 0.8
+  font_size: 6
