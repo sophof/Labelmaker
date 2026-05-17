@@ -1,4 +1,4 @@
-from build123d import Compound, export_stl
+from build123d import Compound, Location, Vector, export_stl
 
 from labels.label_style import ColoredPart
 from .build_3mf import export_3mf
@@ -22,3 +22,19 @@ def export_label(
         export_stl(Compound(secondary) if len(secondary) > 1 else secondary[0], text_stl_path)
 
     export_3mf([(p.shape, p.name, p.color) for p in parts], tmf_path)
+
+
+def export_labels_batch(
+    label_parts_list: list[list[ColoredPart]],
+    tmf_path: str,
+    label_width: float = 0.0,
+    gap: float = 2.0,
+) -> None:
+    """Write a single 3MF containing all labels laid out in a row."""
+    all_shapes = []
+    for i, parts in enumerate(label_parts_list):
+        x_offset = i * (label_width + gap)
+        for p in parts:
+            shifted = p.shape.moved(Location(Vector(x_offset, 0, 0)))
+            all_shapes.append((shifted, f"label{i + 1}_{p.name}", p.color))
+    export_3mf(all_shapes, tmf_path)

@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 import labels as label_registry
 from config import BASE_COLOR, PORT, TEXT_COLOR
-from lib.export import export_label
+from lib.export import export_label, export_labels_batch
 from systems import load_systems
 
 GENERATED_DIR = "generated"
@@ -49,6 +49,14 @@ async def lifespan(app):
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+
+class BatchGenerateParams(BaseModel):
+    texts: list[str]
+    style: str
+    params: dict[str, float | str]
+    base_color: str = BASE_COLOR
+    text_color: str = TEXT_COLOR
 
 
 class GenerateParams(BaseModel):
@@ -98,6 +106,31 @@ def generate(req: GenerateParams):
     if len(parts) > 1:
         response["text_stl_url"] = f"/download/{session_id}_label_text.stl"
     return response
+
+
+@app.post("/generate-batch")
+def generate_batch(req: BatchGenerateParams):
+    style = label_registry.get_style(req.style)
+    if style is None:
+        raise HTTPException(status_code=400, detail=f"Unknown style: {req.style}")
+    if not req.texts:
+        raise HTTPException(status_code=400, detail="No labels provided")
+
+    cleanup_old_files()
+
+    label_parts_list = []
+    for text in req.texts:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            parts = style.build(text, req.params, req.base_color, req.text_color)
+        label_parts_list.append(parts)
+
+    session_id = str(uuid.uuid4())
+    tmf_path = os.path.join(GENERATED_DIR, f"{session_id}_batch.3mf")
+    label_width = float(req.params.get("width", 0))
+    export_labels_batch(label_parts_list, tmf_path, label_width=label_width)
+
+    return {"3mf_url": f"/download/{session_id}_batch.3mf"}
 
 
 @app.get("/download/{filename}")

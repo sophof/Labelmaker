@@ -249,11 +249,112 @@ function onMulticolumnToggle() {
   document.getElementById('separator-field').style.display = on ? '' : 'none';
 }
 
+// --- Batch modal ---
+
+function openBatchModal() {
+  document.getElementById('batch-modal').style.display = 'flex';
+  if (document.getElementById('batch-list').children.length === 0) {
+    addBatchEntry('');
+  }
+}
+
+function closeBatchModal() {
+  document.getElementById('batch-modal').style.display = 'none';
+}
+
+function addBatchEntry(text = '') {
+  const list = document.getElementById('batch-list');
+  const entry = document.createElement('div');
+  entry.className = 'batch-entry';
+  const ta = document.createElement('textarea');
+  ta.className = 'batch-text';
+  ta.rows = 2;
+  ta.value = text;
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'batch-remove-btn';
+  removeBtn.title = 'Remove';
+  removeBtn.textContent = '✕';
+  removeBtn.addEventListener('click', () => entry.remove());
+  entry.appendChild(ta);
+  entry.appendChild(removeBtn);
+  list.appendChild(entry);
+  ta.focus();
+}
+
+function addCurrentToBatch() {
+  addBatchEntry(document.getElementById('text').value);
+  openBatchModal();
+}
+
+async function generateBatch() {
+  const texts = [...document.querySelectorAll('.batch-text')]
+    .map(el => el.value)
+    .filter(t => t.trim());
+  if (texts.length === 0) return;
+
+  const btn = document.getElementById('batch-generate-btn');
+  const status = document.getElementById('batch-status');
+  const dlBtn = document.getElementById('batch-download-btn');
+
+  btn.disabled = true;
+  btn.textContent = `Generating ${texts.length} label${texts.length > 1 ? 's' : ''}…`;
+  dlBtn.style.display = 'none';
+  status.textContent = '';
+
+  try {
+    const body = {
+      texts,
+      style: document.getElementById('style-select').value,
+      params: {
+        ...boxParams,
+        ...getParams(),
+        column_separator: document.getElementById('multicolumn-toggle').checked
+          ? document.getElementById('column-separator').value
+          : '',
+      },
+      base_color: document.getElementById('base-color').value,
+      text_color: document.getElementById('text-color').value,
+    };
+
+    const res = await fetch('/generate-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || res.statusText);
+    }
+
+    const data = await res.json();
+    dlBtn.href = data['3mf_url'];
+    dlBtn.style.display = 'block';
+    status.textContent = `Done — ${texts.length} label${texts.length > 1 ? 's' : ''}.`;
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate batch 3MF';
+  }
+}
+
 document.getElementById('system-select').addEventListener('change', onSystemChange);
 document.getElementById('box-select').addEventListener('change', onBoxChange);
 document.getElementById('style-select').addEventListener('change', onStyleChange);
 document.getElementById('auto-color-btn').addEventListener('click', autoTextColor);
 document.getElementById('multicolumn-toggle').addEventListener('change', onMulticolumnToggle);
 document.getElementById('generate-btn').addEventListener('click', generate);
+document.getElementById('batch-open-btn').addEventListener('click', openBatchModal);
+document.getElementById('add-to-batch-btn').addEventListener('click', addCurrentToBatch);
+document.getElementById('batch-close-btn').addEventListener('click', closeBatchModal);
+document.getElementById('batch-backdrop').addEventListener('click', closeBatchModal);
+document.getElementById('batch-add-btn').addEventListener('click', () => addBatchEntry(''));
+document.getElementById('batch-clear-btn').addEventListener('click', () => {
+  document.getElementById('batch-list').innerHTML = '';
+  document.getElementById('batch-download-btn').style.display = 'none';
+  document.getElementById('batch-status').textContent = '';
+});
+document.getElementById('batch-generate-btn').addEventListener('click', generateBatch);
 
 loadSystems();

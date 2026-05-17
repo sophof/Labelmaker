@@ -58,3 +58,41 @@ button {
 
 #preview { flex: 1; }
 canvas { display: block; }
+
+.btn-secondary {
+  background: #3a3a3a; color: #ccc; border: 1px solid #555; font-size: 0.85rem;
+}
+.btn-secondary:hover { background: #444; color: #fff; }
+
+#batch-modal {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+}
+#batch-backdrop {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, 0.6);
+}
+#batch-dialog {
+  position: relative; background: #242424; border-radius: 8px;
+  padding: 24px; width: 520px; max-height: 80vh;
+  display: flex; flex-direction: column; gap: 12px; overflow: hidden;
+}
+#batch-list {
+  display: flex; flex-direction: column; gap: 8px;
+  overflow-y: auto; flex: 1; min-height: 60px;
+}
+.batch-entry { display: flex; gap: 8px; align-items: flex-start; }
+.batch-entry textarea { flex: 1; resize: vertical; }
+.batch-remove-btn {
+  background: #3a3a3a; color: #888; border: 1px solid #555;
+  border-radius: 4px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; flex-shrink: 0;
+}
+.batch-remove-btn:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+#batch-generate-btn { background: #2563eb; color: #fff; }
+#batch-generate-btn:hover { background: #1d4ed8; }
+#batch-generate-btn:disabled { background: #444; cursor: default; }
+#batch-download-btn {
+  display: none; text-align: center; text-decoration: none;
+  background: #16a34a; color: #fff; padding: 10px; border-radius: 6px; font-size: 0.95rem;
+}
+#batch-download-btn:hover { background: #15803d; }
+#batch-status { font-size: 0.8rem; color: #aaa; min-height: 1.2em; }
