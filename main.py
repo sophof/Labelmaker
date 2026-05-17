@@ -5,13 +5,12 @@ import uuid
 import warnings
 from contextlib import asynccontextmanager
 
+import uvicorn
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-
-import uvicorn
 
 import labels as label_registry
 from config import BASE_COLOR, PORT, TEXT_COLOR
