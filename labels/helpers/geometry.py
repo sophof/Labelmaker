@@ -1,7 +1,10 @@
 from build123d import Axis, BuildPart, BuildSketch, Solid, RectangleRounded, chamfer, extrude
 
+CORNER_RADIUS = 2.0
+CHAMFER = 0.2
 
-def build_base(params: dict, corner_radius: float, chamfer_size: float) -> Solid:
+
+def build_base(params: dict, corner_radius: float = CORNER_RADIUS, chamfer_size: float = CHAMFER) -> Solid:
     with BuildPart() as base_part:
         with BuildSketch():
             RectangleRounded(params["width"], params["height"], corner_radius)

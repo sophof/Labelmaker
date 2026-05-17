@@ -2,14 +2,11 @@ from build123d import Axis, BuildPart, BuildSketch, Location, Mode, Plane, Recta
 
 from ..label_style import ColoredPart, LabelStyle
 from ..helpers.params import BASE_PARAMS, TEXT_PARAMS, TEXT_STYLE_OPTIONS
-from ..helpers.geometry import build_base
+from ..helpers.geometry import CHAMFER, CORNER_RADIUS, build_base
 from ..helpers.combine_geometry_and_text import combine_geometry_and_text
 
-CORNER_RADIUS = 2.0
-CHAMFER = 0.2
 BORDER_WIDTH = 1.0
 BORDER_DEPTH = 0.4
-TEXT_DEPTH = 0.4
 
 
 class Bordered(LabelStyle):
@@ -27,7 +24,7 @@ class Bordered(LabelStyle):
     }
 
     def build(self, text: str, params: dict, base_color: str = "#FFFFFF", text_color: str = "#000000") -> list[ColoredPart]:
-        full_base = build_base(params, CORNER_RADIUS, CHAMFER)
+        full_base = build_base(params)
         top_face = full_base.faces().sort_by(Axis.Z)[-1]
 
         inner_radius = max(CORNER_RADIUS - BORDER_WIDTH, 0.5)
@@ -50,6 +47,6 @@ class Bordered(LabelStyle):
 
         inner_top_face = base_with_ring.faces().sort_by(Axis.Z)[-1]
         return combine_geometry_and_text(
-            base_with_ring, inner_top_face, text, params, TEXT_DEPTH, base_color, text_color,
+            base_with_ring, inner_top_face, text, params, base_color, text_color,
             accent_components=[ColoredPart(ring_fill, "border", text_color)],
         )

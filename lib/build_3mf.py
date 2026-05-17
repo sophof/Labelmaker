@@ -1,4 +1,5 @@
 """Assemble a multi-component 3MF file from build123d Shape objects."""
+import os
 import struct
 import tempfile
 import zipfile
@@ -53,9 +54,12 @@ def _parse_binary_stl(data: bytes):
 def _shape_to_xml(shape: Shape, obj_id: int, name: str, pid: int | None, pindex: int | None) -> str:
     with tempfile.NamedTemporaryFile(suffix=".stl", delete=False) as f:
         tmp = f.name
-    export_stl(shape, tmp)
-    with open(tmp, "rb") as f:
-        data = f.read()
+    try:
+        export_stl(shape, tmp)
+        with open(tmp, "rb") as f:
+            data = f.read()
+    finally:
+        os.unlink(tmp)
 
     vertices, triangles = _parse_binary_stl(data)
 
@@ -80,31 +84,30 @@ def _shape_to_xml(shape: Shape, obj_id: int, name: str, pid: int | None, pindex:
 
 
 def export_3mf(shapes: list[tuple[Shape, str, str | None]], output_path: str) -> None:
-    """Write a 3MF file with one component per (shape, name, color) tuple.
+    """Write a standard 3MF with one mesh object per (shape, name, color) tuple.
 
-    Colors are collected into a single m:colorgroup resource so Bambu Studio /
-    OrcaSlicer can map each distinct color to a filament via the standard 3MF
-    color-parsing dialog.  Two shapes sharing the same hex color string get the
-    same pindex and will be assigned to the same filament slot.
+    Each object references the m:colorgroup by pid/pindex so BambuStudio/OrcaSlicer
+    prompt the user to map colors to filaments on open.
+
+    NOTE: BambuStudio 2.5+ has a regression (issue #9666) where pid/pindex color data
+    is treated as Color Painting, bleeding through top_shell_layers × layer_height
+    regardless of actual geometry depth. Waiting for upstream fix.
     """
-    # Deduplicate colours in order of first appearance.
     color_order: list[str] = []
     color_index: dict[str, int] = {}
-    for _, name, color in shapes:
+    for _, _name, color in shapes:
         if color is not None and color not in color_index:
             color_index[color] = len(color_order)
             color_order.append(color)
 
-    # Build the m:colorgroup resource (id=1).
     colorgroup_xml = ""
     if color_order:
         entries = "\n      ".join(
-            f'<m:color name="filament{i + 1}" color="{_to_rgba(c)}"/>'
-            for i, c in enumerate(color_order)
+            f'<m:color color="{_to_rgba(c)}"/>'
+            for c in color_order
         )
-        colorgroup_xml = f'    <m:colorgroup id="1">\n      {entries}\n    </m:colorgroup>\n'
+        colorgroup_xml = f'  <m:colorgroup id="1">\n      {entries}\n  </m:colorgroup>\n'
 
-    # Objects start at id=2 (id=1 is the colorgroup).
     obj_id_start = 2
     objects_xml = "\n".join(
         _shape_to_xml(

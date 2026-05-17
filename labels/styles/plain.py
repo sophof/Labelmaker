@@ -5,11 +5,6 @@ from ..helpers.params import BASE_PARAMS, TEXT_PARAMS, TEXT_STYLE_OPTIONS
 from ..helpers.geometry import build_base
 from ..helpers.combine_geometry_and_text import combine_geometry_and_text
 
-CORNER_RADIUS = 2.0
-CHAMFER = 0.2
-TEXT_DEPTH = 0.4
-
-
 class Plain(LabelStyle):
     STYLE_ID = "plain"
     STYLE_NAME = "Plain"
@@ -25,6 +20,6 @@ class Plain(LabelStyle):
     }
 
     def build(self, text: str, params: dict, base_color: str = "#FFFFFF", text_color: str = "#000000") -> list[ColoredPart]:
-        base = build_base(params, CORNER_RADIUS, CHAMFER)
+        base = build_base(params)
         top_face = base.faces().sort_by(Axis.Z)[-1]
-        return combine_geometry_and_text(base, top_face, text, params, TEXT_DEPTH, base_color, text_color)
+        return combine_geometry_and_text(base, top_face, text, params, base_color, text_color)
