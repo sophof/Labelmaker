@@ -58,12 +58,11 @@
   <h2>Parameters</h2>
   <div class="params-grid" id="params-grid"></div>
 
-  <button id="generate-btn">Generate</button>
   <div style="display:flex; gap:8px;">
-    <button id="add-to-batch-btn" class="btn-secondary" style="flex:1">Add to batch</button>
-    <button id="batch-open-btn" class="btn-secondary" style="flex:1">Batch...</button>
+    <button id="generate-btn" style="flex:1">Generate</button>
+    <button id="batch-open-btn" style="flex:1">Label list (<span id="batch-count">0</span>)</button>
   </div>
-  <a id="download-btn" download>Download 3MF</a>
+  <button id="download-batch-btn">Download 3MF</button>
   <div id="status"></div>
 </div>
 
@@ -72,16 +71,16 @@
 <div id="batch-modal" style="display:none">
   <div id="batch-backdrop"></div>
   <div id="batch-dialog">
-    <h1>Batch labels</h1>
+    <h1>Label list</h1>
     <div id="batch-list"></div>
     <div style="display:flex; gap:8px;">
       <button id="batch-add-btn" class="btn-secondary" style="flex:1">+ Add label</button>
       <button id="batch-clear-btn" class="btn-secondary" style="flex:1">Clear all</button>
     </div>
-    <button id="batch-generate-btn">Generate batch 3MF</button>
-    <a id="batch-download-btn" download>Download batch 3MF</a>
-    <div id="batch-status"></div>
-    <button id="batch-close-btn" class="btn-secondary">Close</button>
+    <div style="display:flex; gap:8px;">
+      <button id="batch-generate-btn" style="flex:1">Generate preview</button>
+      <button id="batch-close-btn" class="btn-secondary" style="flex:1">Cancel</button>
+    </div>
   </div>
 </div>
 

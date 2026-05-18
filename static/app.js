@@ -45,6 +45,14 @@ const loader = new STLLoader();
 const matBase = new THREE.MeshPhongMaterial({ color: 0xffffff });
 const matText = new THREE.MeshPhongMaterial({ color: 0x000000 });
 
+function fitCamera(size) {
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const dist = maxDim * 2.5;
+  camera.position.set(0, -dist * 0.8, dist * 0.6);
+  controls.target.set(0, 0, 0);
+  controls.update();
+}
+
 function loadSTLs(baseUrl, textUrl, baseColor, textColor) {
   if (meshBase) { scene.remove(meshBase); meshBase = null; }
   if (meshText) { scene.remove(meshText); meshText = null; }
@@ -55,10 +63,13 @@ function loadSTLs(baseUrl, textUrl, baseColor, textColor) {
   loader.load(baseUrl, geo => {
     geo.computeBoundingBox();
     const center = new THREE.Vector3();
+    const size = new THREE.Vector3();
     geo.boundingBox.getCenter(center);
+    geo.boundingBox.getSize(size);
     geo.translate(-center.x, -center.y, -center.z);
     meshBase = new THREE.Mesh(geo, matBase);
     scene.add(meshBase);
+    fitCamera(size);
 
     if (textUrl) {
       loader.load(textUrl, geoT => {
@@ -166,18 +177,44 @@ function getParams() {
   return result;
 }
 
+function buildBatchBody() {
+  return {
+    texts: [...document.querySelectorAll('.batch-text')].map(el => el.value).filter(t => t.trim()),
+    style: document.getElementById('style-select').value,
+    params: {
+      ...boxParams,
+      ...getParams(),
+      column_separator: document.getElementById('multicolumn-toggle').checked
+        ? document.getElementById('column-separator').value : '',
+    },
+    base_color: document.getElementById('base-color').value,
+    text_color: document.getElementById('text-color').value,
+  };
+}
+
+async function refreshBatchPreview() {
+  const body = buildBatchBody();
+  if (body.texts.length === 0) return;
+  try {
+    const res = await fetch('/generate-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    loadSTLs(data.base_stl_url, data.text_stl_url ?? null, data.base_color, data.text_color);
+  } catch (_) { /* preview errors are non-fatal */ }
+}
+
 async function generate() {
   const btn = document.getElementById('generate-btn');
   const status = document.getElementById('status');
-  const dlBtn = document.getElementById('download-btn');
 
   btn.disabled = true;
   btn.textContent = 'Generating…';
-  dlBtn.classList.remove('has-warning');
-  dlBtn.textContent = 'Download 3MF';
   status.textContent = '';
   status.className = '';
-  dlBtn.style.display = 'none';
 
   try {
     const styleId = document.getElementById('style-select').value;
@@ -210,16 +247,12 @@ async function generate() {
     }
 
     const data = await res.json();
-    loadSTLs(data.base_stl_url, data.text_stl_url, data.base_color, data.text_color);
-    dlBtn.href = data['3mf_url'];
-    dlBtn.style.display = 'block';
+    addBatchEntry(body.text, false);
+    await refreshBatchPreview();
     if (data.warnings?.length) {
       status.className = 'warning';
       status.textContent = '⚠ ' + data.warnings.join(' · ');
-      dlBtn.classList.add('has-warning');
-      dlBtn.textContent = '⚠ Download 3MF';
     } else {
-      status.className = '';
       status.textContent = 'Done.';
     }
   } catch (e) {
@@ -253,16 +286,18 @@ function onMulticolumnToggle() {
 
 function openBatchModal() {
   document.getElementById('batch-modal').style.display = 'flex';
-  if (document.getElementById('batch-list').children.length === 0) {
-    addBatchEntry('');
-  }
 }
 
 function closeBatchModal() {
   document.getElementById('batch-modal').style.display = 'none';
 }
 
-function addBatchEntry(text = '') {
+function updateBatchCount() {
+  document.getElementById('batch-count').textContent =
+    document.querySelectorAll('.batch-text').length;
+}
+
+function addBatchEntry(text = '', focus = true) {
   const list = document.getElementById('batch-list');
   const entry = document.createElement('div');
   entry.className = 'batch-entry';
@@ -274,48 +309,31 @@ function addBatchEntry(text = '') {
   removeBtn.className = 'batch-remove-btn';
   removeBtn.title = 'Remove';
   removeBtn.textContent = '✕';
-  removeBtn.addEventListener('click', () => entry.remove());
+  removeBtn.addEventListener('click', () => { entry.remove(); updateBatchCount(); });
   entry.appendChild(ta);
   entry.appendChild(removeBtn);
   list.appendChild(entry);
-  ta.focus();
+  updateBatchCount();
+  if (focus) ta.focus();
 }
 
-function addCurrentToBatch() {
-  addBatchEntry(document.getElementById('text').value);
-  openBatchModal();
-}
+async function downloadBatch() {
+  const btn = document.getElementById('download-batch-btn');
+  const status = document.getElementById('status');
+  const body = buildBatchBody();
 
-async function generateBatch() {
-  const texts = [...document.querySelectorAll('.batch-text')]
-    .map(el => el.value)
-    .filter(t => t.trim());
-  if (texts.length === 0) return;
-
-  const btn = document.getElementById('batch-generate-btn');
-  const status = document.getElementById('batch-status');
-  const dlBtn = document.getElementById('batch-download-btn');
+  if (body.texts.length === 0) {
+    status.textContent = 'Label list is empty.';
+    return;
+  }
 
   btn.disabled = true;
-  btn.textContent = `Generating ${texts.length} label${texts.length > 1 ? 's' : ''}…`;
-  dlBtn.style.display = 'none';
+  btn.textContent = 'Generating…';
+  btn.classList.remove('has-warning');
   status.textContent = '';
+  status.className = '';
 
   try {
-    const body = {
-      texts,
-      style: document.getElementById('style-select').value,
-      params: {
-        ...boxParams,
-        ...getParams(),
-        column_separator: document.getElementById('multicolumn-toggle').checked
-          ? document.getElementById('column-separator').value
-          : '',
-      },
-      base_color: document.getElementById('base-color').value,
-      text_color: document.getElementById('text-color').value,
-    };
-
     const res = await fetch('/generate-batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -328,14 +346,24 @@ async function generateBatch() {
     }
 
     const data = await res.json();
-    dlBtn.href = data['3mf_url'];
-    dlBtn.style.display = 'block';
-    status.textContent = `Done — ${texts.length} label${texts.length > 1 ? 's' : ''}.`;
+    const a = document.createElement('a');
+    a.href = data['3mf_url'];
+    a.download = '';
+    a.click();
+    loadSTLs(data.base_stl_url, data.text_stl_url ?? null, data.base_color, data.text_color);
+    if (data.warnings?.length) {
+      btn.classList.add('has-warning');
+      btn.textContent = '⚠ Download 3MF';
+      status.className = 'warning';
+      status.textContent = '⚠ ' + data.warnings.join(' · ');
+    } else {
+      status.textContent = `Downloaded ${texts.length} label${texts.length > 1 ? 's' : ''}.`;
+    }
   } catch (e) {
     status.textContent = 'Error: ' + e.message;
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Generate batch 3MF';
+    btn.textContent = 'Download 3MF';
   }
 }
 
@@ -346,15 +374,14 @@ document.getElementById('auto-color-btn').addEventListener('click', autoTextColo
 document.getElementById('multicolumn-toggle').addEventListener('change', onMulticolumnToggle);
 document.getElementById('generate-btn').addEventListener('click', generate);
 document.getElementById('batch-open-btn').addEventListener('click', openBatchModal);
-document.getElementById('add-to-batch-btn').addEventListener('click', addCurrentToBatch);
+document.getElementById('batch-generate-btn').addEventListener('click', () => { closeBatchModal(); refreshBatchPreview(); });
 document.getElementById('batch-close-btn').addEventListener('click', closeBatchModal);
 document.getElementById('batch-backdrop').addEventListener('click', closeBatchModal);
 document.getElementById('batch-add-btn').addEventListener('click', () => addBatchEntry(''));
 document.getElementById('batch-clear-btn').addEventListener('click', () => {
   document.getElementById('batch-list').innerHTML = '';
-  document.getElementById('batch-download-btn').style.display = 'none';
-  document.getElementById('batch-status').textContent = '';
+  updateBatchCount();
 });
-document.getElementById('batch-generate-btn').addEventListener('click', generateBatch);
+document.getElementById('download-batch-btn').addEventListener('click', downloadBatch);
 
 loadSystems();

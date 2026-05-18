@@ -34,6 +34,7 @@ select option { background: #333; }
 }
 
 button {
+  -webkit-appearance: none; appearance: none;
   border: none; padding: 10px; border-radius: 6px; font-size: 0.95rem; cursor: pointer;
 }
 .btn-auto {
@@ -44,14 +45,15 @@ button {
 #generate-btn { background: #2563eb; color: #fff; }
 #generate-btn:hover { background: #1d4ed8; }
 #generate-btn:disabled { background: #444; cursor: default; }
-#download-btn.has-warning { background: #dc2626; }
-#download-btn.has-warning:hover { background: #b91c1c; }
-
-#download-btn {
-  display: none; text-align: center; text-decoration: none;
+#batch-open-btn { background: #2563eb; color: #fff; border: none; }
+#batch-open-btn:hover { background: #1d4ed8; color: #fff; }
+#download-batch-btn {
   background: #16a34a; color: #fff; padding: 10px; border-radius: 6px; font-size: 0.95rem;
 }
-#download-btn:hover { background: #15803d; }
+#download-batch-btn:hover { background: #15803d; }
+#download-batch-btn:disabled { background: #444; cursor: default; }
+#download-batch-btn.has-warning { background: #dc2626; }
+#download-batch-btn.has-warning:hover { background: #b91c1c; }
 
 #status { font-size: 0.8rem; color: #aaa; min-height: 1.2em; }
 #status.warning { color: #fbbf24; font-size: 0.85rem; font-weight: 600; }
@@ -87,12 +89,6 @@ canvas { display: block; }
   border-radius: 4px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; flex-shrink: 0;
 }
 .batch-remove-btn:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
-#batch-generate-btn { background: #2563eb; color: #fff; }
-#batch-generate-btn:hover { background: #1d4ed8; }
+#batch-generate-btn { background: #16a34a; color: #fff; }
+#batch-generate-btn:hover { background: #15803d; }
 #batch-generate-btn:disabled { background: #444; cursor: default; }
-#batch-download-btn {
-  display: none; text-align: center; text-decoration: none;
-  background: #16a34a; color: #fff; padding: 10px; border-radius: 6px; font-size: 0.95rem;
-}
-#batch-download-btn:hover { background: #15803d; }
-#batch-status { font-size: 0.8rem; color: #aaa; min-height: 1.2em; }

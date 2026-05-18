@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 import labels as label_registry
 from config import BASE_COLOR, PORT, TEXT_COLOR
-from lib.export import export_label, export_labels_batch
+from lib.export import export_labels_batch
 from systems import load_systems
 
 GENERATED_DIR = "generated"
@@ -32,7 +32,7 @@ def cleanup_old_files():
 
 
 def cleanup_session(session_id: str):
-    for f in glob.glob(os.path.join(GENERATED_DIR, f"{session_id}_*")):
+    for f in glob.glob(os.path.join(GENERATED_DIR, f"{session_id}_*.3mf")):
         try:
             os.remove(f)
         except OSError:
@@ -85,27 +85,11 @@ def generate(req: GenerateParams):
 
     cleanup_old_files()
 
-    session_id = str(uuid.uuid4())
-    tmf_path = os.path.join(GENERATED_DIR, f"{session_id}_label.3mf")
-    base_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_label_base.stl")
-    text_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_label_text.stl")
-
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        parts = style.build(req.text, req.params, req.base_color, req.text_color)
+        style.build(req.text, req.params, req.base_color, req.text_color)
 
-    export_label(parts, tmf_path, base_stl_path, text_stl_path)
-
-    response = {
-        "3mf_url": f"/download/{session_id}_label.3mf",
-        "base_stl_url": f"/download/{session_id}_label_base.stl",
-        "base_color": req.base_color,
-        "text_color": req.text_color,
-        "warnings": [str(w.message) for w in caught],
-    }
-    if len(parts) > 1:
-        response["text_stl_url"] = f"/download/{session_id}_label_text.stl"
-    return response
+    return {"warnings": [str(w.message) for w in caught]}
 
 
 @app.post("/generate-batch")
@@ -127,10 +111,28 @@ def generate_batch(req: BatchGenerateParams):
 
     session_id = str(uuid.uuid4())
     tmf_path = os.path.join(GENERATED_DIR, f"{session_id}_batch.3mf")
+    base_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_batch_base.stl")
+    text_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_batch_text.stl")
     label_width = float(req.params.get("width", 0))
-    export_labels_batch(label_parts_list, tmf_path, label_width=label_width)
+    label_height = float(req.params.get("height", 0))
+    has_text = any(len(parts) > 1 for parts in label_parts_list)
+    export_labels_batch(
+        label_parts_list, tmf_path,
+        label_width=label_width,
+        label_height=label_height,
+        base_stl_path=base_stl_path,
+        text_stl_path=text_stl_path if has_text else None,
+    )
 
-    return {"3mf_url": f"/download/{session_id}_batch.3mf"}
+    response = {
+        "3mf_url": f"/download/{session_id}_batch.3mf",
+        "base_stl_url": f"/download/{session_id}_batch_base.stl",
+        "base_color": req.base_color,
+        "text_color": req.text_color,
+    }
+    if has_text:
+        response["text_stl_url"] = f"/download/{session_id}_batch_text.stl"
+    return response
 
 
 @app.get("/download/{filename}")
@@ -141,8 +143,8 @@ def download(filename: str, background_tasks: BackgroundTasks):
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")
 
-    if filename.endswith("_label.3mf"):
-        session_id = filename[: -len("_label.3mf")]
+    if filename.endswith("_batch.3mf"):
+        session_id = filename[: -len("_batch.3mf")]
         background_tasks.add_task(cleanup_session, session_id)
 
     return FileResponse(path)
