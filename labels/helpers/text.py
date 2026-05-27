@@ -1,4 +1,4 @@
-from build123d import Align, BuildPart, BuildSketch, Locations, Plane, Rectangle, Text, extrude
+from build123d import Align, BuildPart, BuildSketch, FontStyle, Locations, Plane, Rectangle, Text, extrude
 
 LINE_SPACING_FACTOR = 1.3
 DIVIDER_WIDTH = 0.4
@@ -47,8 +47,9 @@ def build_text_compound(top_face, text: str, params: dict, depth: float):
         for line, x, y in iter_text_blocks(text, params):
             with BuildSketch(Plane(top_face)):
                 with Locations([(x, y)]):
+                    font_style = FontStyle.BOLD if params.get("bold", False) else FontStyle.REGULAR
                     Text(line, font_size=params["font_size"], font=params["font"],
-                         align=(Align.CENTER, Align.CENTER))
+                         font_style=font_style, align=(Align.CENTER, Align.CENTER))
             extrude(amount=depth)
         for div_x in divider_positions(text, params):
             with BuildSketch(Plane(top_face)):

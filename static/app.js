@@ -149,15 +149,19 @@ function renderParams(params) {
   }
 
   const grid = document.getElementById('params-grid');
+  const boldParam = params['bold'];
   grid.innerHTML = Object.entries(params)
-    .filter(([key]) => !BOX_PARAM_KEYS.has(key) && key !== 'column_separator')
+    .filter(([key]) => !BOX_PARAM_KEYS.has(key) && key !== 'column_separator' && key !== 'bold')
     .map(([key, p]) => {
       const unitLabel = p.unit ? ` (${p.unit})` : '';
       const fullWidth = p.type === 'str' ? ' style="grid-column: 1 / -1"' : '';
       let input;
       if (p.type === 'str' && p.options?.length) {
         const opts = p.options.map(o => `<option value="${o}"${o === p.value ? ' selected' : ''}>${o}</option>`).join('');
-        input = `<select id="param-${key}">${opts}</select>`;
+        const boldToggle = key === 'font' && boldParam
+          ? `<div class="checkbox-row"><input type="checkbox" id="param-bold"${boldParam.value ? ' checked' : ''} /><label>Bold</label></div>`
+          : '';
+        input = `<div style="display:flex;align-items:center;gap:10px;"><select id="param-${key}" style="flex:1">${opts}</select>${boldToggle}</div>`;
       } else if (p.type === 'str') {
         input = `<input type="text" id="param-${key}" value="${p.value}" />`;
       } else {
@@ -172,7 +176,7 @@ function getParams() {
   const result = {};
   for (const el of grid.querySelectorAll('input, select')) {
     const key = el.id.replace('param-', '');
-    result[key] = el.type === 'number' ? parseFloat(el.value) : el.value;
+    result[key] = el.type === 'number' ? parseFloat(el.value) : el.type === 'checkbox' ? el.checked : el.value;
   }
   return result;
 }

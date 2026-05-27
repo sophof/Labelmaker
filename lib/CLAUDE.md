@@ -44,3 +44,9 @@ loaded white) — reverted until a better approach is found or the upstream bug 
 - Note: `subtype="modifier"` CAN assign a second filament but requires an uncarved base
   (color change only, no physical indentation). `normal_part` with carved base preserves
   actual debossed geometry.
+- **Second attempt result (reverted):** Adding model_settings.config WITH pid/pindex kept
+  was tried for per-label grouping. It caused BambuStudio to switch to native import mode,
+  which evaluates the "too small — scale to mm?" dialog per-object rather than per-batch.
+  Labels are 1 mm deep, so every open triggered a false-positive scale warning that required
+  dismissal. Reverted; grouping blocked until a workaround for the per-object size check
+  is found.
