@@ -64,6 +64,7 @@
   </div>
   <button id="download-batch-btn">Download 3MF</button>
   <div id="status"></div>
+  <button id="advanced-open-btn" class="btn-secondary">Advanced</button>
 </div>
 
 <div id="preview"></div>
@@ -81,6 +82,20 @@
       <button id="batch-generate-btn" style="flex:1">Generate preview</button>
       <button id="batch-close-btn" class="btn-secondary" style="flex:1">Cancel</button>
     </div>
+  </div>
+</div>
+
+<div id="advanced-modal" style="display:none">
+  <div id="advanced-backdrop"></div>
+  <div id="advanced-dialog">
+    <h1>Advanced</h1>
+    <hr class="divider">
+    <div class="field">
+      <label>Font sampler</label>
+      <p style="font-size:0.8rem;color:#888;margin-bottom:6px">Generate one label per font (regular + bold) using the font name as text.</p>
+      <button id="font-sampler-btn">Generate font sampler</button>
+    </div>
+    <button id="advanced-close-btn" class="btn-secondary">Close</button>
   </div>
 </div>
 

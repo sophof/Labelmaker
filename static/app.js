@@ -371,6 +371,61 @@ async function downloadBatch() {
   }
 }
 
+// --- Advanced modal ---
+
+function openAdvancedModal() {
+  document.getElementById('advanced-modal').style.display = 'flex';
+}
+
+function closeAdvancedModal() {
+  document.getElementById('advanced-modal').style.display = 'none';
+}
+
+async function generateFontSampler() {
+  const btn = document.getElementById('font-sampler-btn');
+  const status = document.getElementById('status');
+
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  status.textContent = '';
+  status.className = '';
+
+  try {
+    const body = {
+      texts: [],
+      style: document.getElementById('style-select').value,
+      params: { ...boxParams, ...getParams() },
+      base_color: document.getElementById('base-color').value,
+      text_color: document.getElementById('text-color').value,
+    };
+
+    const res = await fetch('/generate-font-sampler', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || res.statusText);
+    }
+
+    const data = await res.json();
+    const a = document.createElement('a');
+    a.href = data['3mf_url'];
+    a.download = '';
+    a.click();
+    loadSTLs(data.base_stl_url, data.text_stl_url ?? null, data.base_color, data.text_color);
+    closeAdvancedModal();
+    status.textContent = 'Font sampler downloaded.';
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate font sampler';
+  }
+}
+
 document.getElementById('system-select').addEventListener('change', onSystemChange);
 document.getElementById('box-select').addEventListener('change', onBoxChange);
 document.getElementById('style-select').addEventListener('change', onStyleChange);
@@ -387,5 +442,10 @@ document.getElementById('batch-clear-btn').addEventListener('click', () => {
   updateBatchCount();
 });
 document.getElementById('download-batch-btn').addEventListener('click', downloadBatch);
+
+document.getElementById('advanced-open-btn').addEventListener('click', openAdvancedModal);
+document.getElementById('advanced-close-btn').addEventListener('click', closeAdvancedModal);
+document.getElementById('advanced-backdrop').addEventListener('click', closeAdvancedModal);
+document.getElementById('font-sampler-btn').addEventListener('click', generateFontSampler);
 
 loadSystems();

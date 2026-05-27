@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 import labels as label_registry
 from config import BASE_COLOR, PORT, TEXT_COLOR
+from labels.helpers.sampler import build_font_sampler
 from lib.export import export_labels_batch
 from systems import load_systems
 
@@ -54,7 +55,7 @@ templates = Jinja2Templates(directory="templates")
 class BatchGenerateParams(BaseModel):
     texts: list[str]
     style: str
-    params: dict[str, float | str]
+    params: dict[str, float | str | bool]
     base_color: str = BASE_COLOR
     text_color: str = TEXT_COLOR
 
@@ -62,7 +63,7 @@ class BatchGenerateParams(BaseModel):
 class GenerateParams(BaseModel):
     text: str
     style: str
-    params: dict[str, float | str]
+    params: dict[str, float | str | bool]
     base_color: str = BASE_COLOR
     text_color: str = TEXT_COLOR
 
@@ -108,6 +109,42 @@ def generate_batch(req: BatchGenerateParams):
             warnings.simplefilter("ignore")
             parts = style.build(text, req.params, req.base_color, req.text_color)
         label_parts_list.append(parts)
+
+    session_id = str(uuid.uuid4())
+    tmf_path = os.path.join(GENERATED_DIR, f"{session_id}_batch.3mf")
+    base_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_batch_base.stl")
+    text_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_batch_text.stl")
+    label_width = float(req.params.get("width", 0))
+    label_height = float(req.params.get("height", 0))
+    has_text = any(len(parts) > 1 for parts in label_parts_list)
+    export_labels_batch(
+        label_parts_list, tmf_path,
+        label_width=label_width,
+        label_height=label_height,
+        base_stl_path=base_stl_path,
+        text_stl_path=text_stl_path if has_text else None,
+    )
+
+    response = {
+        "3mf_url": f"/download/{session_id}_batch.3mf",
+        "base_stl_url": f"/download/{session_id}_batch_base.stl",
+        "base_color": req.base_color,
+        "text_color": req.text_color,
+    }
+    if has_text:
+        response["text_stl_url"] = f"/download/{session_id}_batch_text.stl"
+    return response
+
+
+@app.post("/generate-font-sampler")
+def generate_font_sampler(req: BatchGenerateParams):
+    style = label_registry.get_style(req.style)
+    if style is None:
+        raise HTTPException(status_code=400, detail=f"Unknown style: {req.style}")
+
+    cleanup_old_files()
+
+    label_parts_list = build_font_sampler(style, req.params, req.base_color, req.text_color)
 
     session_id = str(uuid.uuid4())
     tmf_path = os.path.join(GENERATED_DIR, f"{session_id}_batch.3mf")

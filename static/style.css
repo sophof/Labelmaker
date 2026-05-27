@@ -92,3 +92,19 @@ canvas { display: block; }
 #batch-generate-btn { background: #16a34a; color: #fff; }
 #batch-generate-btn:hover { background: #15803d; }
 #batch-generate-btn:disabled { background: #444; cursor: default; }
+
+#advanced-modal {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+}
+#advanced-backdrop {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, 0.6);
+}
+#advanced-dialog {
+  position: relative; background: #242424; border-radius: 8px;
+  padding: 24px; width: 360px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+#font-sampler-btn { background: #2563eb; color: #fff; }
+#font-sampler-btn:hover { background: #1d4ed8; }
+#font-sampler-btn:disabled { background: #444; cursor: default; }
