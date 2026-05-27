@@ -1,7 +1,4 @@
-import glob
 import os
-import time
-import uuid
 import warnings
 from contextlib import asynccontextmanager
 
@@ -15,34 +12,19 @@ from pydantic import BaseModel
 import labels as label_registry
 from config import BASE_COLOR, PORT, TEXT_COLOR
 from labels.helpers.sampler import build_font_sampler
-from lib.export import export_labels_batch
+from lib.storage import (
+    cleanup_old_files,
+    cleanup_session,
+    ensure_dir,
+    path_for,
+    write_batch_session,
+)
 from systems import load_systems
-
-GENERATED_DIR = "generated"
-MAX_FILE_AGE = 86400  # 24 hours
-
-
-def cleanup_old_files():
-    now = time.time()
-    for f in glob.glob(os.path.join(GENERATED_DIR, "*")):
-        try:
-            if now - os.path.getmtime(f) > MAX_FILE_AGE:
-                os.remove(f)
-        except OSError:
-            pass
-
-
-def cleanup_session(session_id: str):
-    for f in glob.glob(os.path.join(GENERATED_DIR, f"{session_id}_*.3mf")):
-        try:
-            os.remove(f)
-        except OSError:
-            pass
 
 
 @asynccontextmanager
 async def lifespan(app):
-    os.makedirs(GENERATED_DIR, exist_ok=True)
+    ensure_dir()
     cleanup_old_files()
     yield
 
@@ -68,6 +50,13 @@ class GenerateParams(BaseModel):
     text_color: str = TEXT_COLOR
 
 
+def _resolve_style(style_id: str):
+    style = label_registry.get_style(style_id)
+    if style is None:
+        raise HTTPException(status_code=400, detail=f"Unknown style: {style_id}")
+    return style
+
+
 @app.get("/")
 def index(request: Request):
     return templates.TemplateResponse(request, "index.html", {"base_color": BASE_COLOR, "text_color": TEXT_COLOR})
@@ -80,10 +69,7 @@ def systems():
 
 @app.post("/generate")
 def generate(req: GenerateParams):
-    style = label_registry.get_style(req.style)
-    if style is None:
-        raise HTTPException(status_code=400, detail=f"Unknown style: {req.style}")
-
+    style = _resolve_style(req.style)
     cleanup_old_files()
 
     with warnings.catch_warnings(record=True) as caught:
@@ -95,9 +81,7 @@ def generate(req: GenerateParams):
 
 @app.post("/generate-batch")
 def generate_batch(req: BatchGenerateParams):
-    style = label_registry.get_style(req.style)
-    if style is None:
-        raise HTTPException(status_code=400, detail=f"Unknown style: {req.style}")
+    style = _resolve_style(req.style)
     if not req.texts:
         raise HTTPException(status_code=400, detail="No labels provided")
 
@@ -107,76 +91,25 @@ def generate_batch(req: BatchGenerateParams):
     for text in req.texts:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            parts = style.build(text, req.params, req.base_color, req.text_color)
-        label_parts_list.append(parts)
+            label_parts_list.append(style.build(text, req.params, req.base_color, req.text_color))
 
-    session_id = str(uuid.uuid4())
-    tmf_path = os.path.join(GENERATED_DIR, f"{session_id}_batch.3mf")
-    base_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_batch_base.stl")
-    text_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_batch_text.stl")
-    label_width = float(req.params.get("width", 0))
-    label_height = float(req.params.get("height", 0))
-    has_text = any(len(parts) > 1 for parts in label_parts_list)
-    export_labels_batch(
-        label_parts_list, tmf_path,
-        label_width=label_width,
-        label_height=label_height,
-        base_stl_path=base_stl_path,
-        text_stl_path=text_stl_path if has_text else None,
-    )
-
-    response = {
-        "3mf_url": f"/download/{session_id}_batch.3mf",
-        "base_stl_url": f"/download/{session_id}_batch_base.stl",
-        "base_color": req.base_color,
-        "text_color": req.text_color,
-    }
-    if has_text:
-        response["text_stl_url"] = f"/download/{session_id}_batch_text.stl"
-    return response
+    return write_batch_session(label_parts_list, req.params, req.base_color, req.text_color)
 
 
 @app.post("/generate-font-sampler")
 def generate_font_sampler(req: BatchGenerateParams):
-    style = label_registry.get_style(req.style)
-    if style is None:
-        raise HTTPException(status_code=400, detail=f"Unknown style: {req.style}")
-
+    style = _resolve_style(req.style)
     cleanup_old_files()
 
     label_parts_list = build_font_sampler(style, req.params, req.base_color, req.text_color)
-
-    session_id = str(uuid.uuid4())
-    tmf_path = os.path.join(GENERATED_DIR, f"{session_id}_batch.3mf")
-    base_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_batch_base.stl")
-    text_stl_path = os.path.join(GENERATED_DIR, f"{session_id}_batch_text.stl")
-    label_width = float(req.params.get("width", 0))
-    label_height = float(req.params.get("height", 0))
-    has_text = any(len(parts) > 1 for parts in label_parts_list)
-    export_labels_batch(
-        label_parts_list, tmf_path,
-        label_width=label_width,
-        label_height=label_height,
-        base_stl_path=base_stl_path,
-        text_stl_path=text_stl_path if has_text else None,
-    )
-
-    response = {
-        "3mf_url": f"/download/{session_id}_batch.3mf",
-        "base_stl_url": f"/download/{session_id}_batch_base.stl",
-        "base_color": req.base_color,
-        "text_color": req.text_color,
-    }
-    if has_text:
-        response["text_stl_url"] = f"/download/{session_id}_batch_text.stl"
-    return response
+    return write_batch_session(label_parts_list, req.params, req.base_color, req.text_color)
 
 
 @app.get("/download/{filename}")
 def download(filename: str, background_tasks: BackgroundTasks):
     if filename != os.path.basename(filename):
         raise HTTPException(status_code=400, detail="Invalid filename")
-    path = os.path.join(GENERATED_DIR, filename)
+    path = path_for(filename)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")
 
