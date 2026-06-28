@@ -1,7 +1,7 @@
 [project]
 name = "labelmaker"
 version = "0.1.0"
-description = "Add your description here"
+description = "Simple webinterface for printing labels on my hobby shelves and boxes"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -11,3 +11,12 @@ dependencies = [
     "pyyaml>=6.0.3",
     "uvicorn[standard]>=0.46.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

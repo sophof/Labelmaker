@@ -100,6 +100,14 @@ Single-page app. On load, fetches `/systems` and populates System and Box dropdo
 
 **Tools modal**: font sampler generator.
 
+## Testing
+
+Run tests with `.venv/bin/pytest` from the project root (`testpaths = ["tests"]` is set in `pyproject.toml`).
+
+**Policy:**
+- **Bugs / regressions:** write a failing test that reproduces the issue *before* fixing it. The fix is done when the test passes.
+- **New features:** a test is preferred but not required.
+
 ## Environment
 - LXC on Proxmox, project at `/opt/labelmaker`
 - Run dev server: `.venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000` (port override for dev; production uses `port` from `config.yaml` via `python main.py`)
