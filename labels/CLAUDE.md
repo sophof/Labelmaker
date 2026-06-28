@@ -6,11 +6,12 @@
 labels/
   helpers/           — shared building blocks (geometry, text, params); no file I/O
   styles/            — one file per label style; auto-discovered at startup
+  label.py           — Label dataclass: the central model object (LabelStyle + box_params + text/font/color)
   label_style.py     — LabelStyle ABC and ColoredPart dataclass: the shared contract for all styles
   __init__.py        — scans styles/ and registers all styles by STYLE_ID
 ```
 
-The key separation: **helpers build geometry**, **styles define label types**, **label_style.py defines the shared contract**.
+The key separation: **helpers build geometry**, **styles define label types**, **label_style.py defines the shared contract**, **label.py is the model passed through the system**.
 A style subclasses LabelStyle and returns a list of ColoredParts from build(). Helpers never import from styles/ and never write files.
 
 ## Adding a new label style

@@ -12,7 +12,7 @@
       "justMyCode": true,
       "serverReadyAction": {
         "pattern": "Uvicorn running on http://[^:]+:(\\d+)",
-        "uriFormat": "http://192.168.1.116:%s",
+        "uriFormat": "http://localhost:%s",
         "action": "openExternally"
       }
     }

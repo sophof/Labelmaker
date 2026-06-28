@@ -6,6 +6,7 @@ TEXT_STYLE_OPTIONS = ["embossed", "debossed", "debossed-open"]
 TEXT_PARAMS = {
     "font":             {"type": "str",  "default": "Arial", "label": "Font", "options": FONTS},
     "bold":             {"type": "bool", "default": True,    "label": "Bold"},
+    "italic":           {"type": "bool", "default": False,   "label": "Italic"},
     "font_size":        {"type": "float", "default": 6.0,  "unit": "mm", "label": "Font size"},
     "column_separator": {"type": "str",   "default": "|",   "label": "Column separator"},
 }

@@ -19,83 +19,114 @@
     <label>Box type</label>
     <select id="box-select"></select>
   </div>
-  <div class="field" id="style-field">
-    <label>Label style</label>
-    <select id="style-select"></select>
-  </div>
-
-  <hr class="divider">
-  <h2>Colors</h2>
-  <div class="params-grid">
-    <div class="field">
-      <label>Base</label>
-      <input type="color" id="base-color" value="{{ base_color }}" />
-    </div>
-    <div class="field">
-      <label>Text / accent</label>
-      <div style="display:flex; gap:6px;">
-        <input type="color" id="text-color" value="{{ text_color }}" style="flex:1;" />
-        <button type="button" class="btn-auto" id="auto-color-btn">Auto</button>
-      </div>
-    </div>
-  </div>
 
   <hr class="divider">
   <h2>Label text</h2>
-  <div class="field">
-    <textarea id="text" rows="2">Resistors</textarea>
-  </div>
-  <div class="checkbox-row">
-    <input type="checkbox" id="multicolumn-toggle" />
-    <label for="multicolumn-toggle">Multi-column</label>
-  </div>
-  <div class="field" id="separator-field" style="display:none">
-    <label>Column separator</label>
-    <input type="text" id="column-separator" value="|" />
+  <div id="label-grid"></div>
+  <div class="grid-controls">
+    <button id="add-row-btn" class="btn-secondary btn-small">+ Row</button>
+    <button id="add-col-btn" class="btn-secondary btn-small">+ Col</button>
+    <button id="remove-row-btn" class="btn-secondary btn-small">− Row</button>
+    <button id="remove-col-btn" class="btn-secondary btn-small">− Col</button>
   </div>
 
   <hr class="divider">
-  <h2>Parameters</h2>
-  <div class="params-grid" id="params-grid"></div>
-
   <div style="display:flex; gap:8px;">
-    <button id="generate-btn" style="flex:1">Generate</button>
-    <button id="batch-open-btn" style="flex:1">Label list (<span id="batch-count">0</span>)</button>
+    <button id="generate-btn" style="flex:1">Generate label</button>
+    <button id="save-btn" class="btn-save" style="flex:1">Save to list</button>
   </div>
-  <button id="download-batch-btn">Download 3MF</button>
+  <div style="display:flex; gap:8px;">
+    <button id="generate-list-btn" style="flex:1">Generate list</button>
+    <button id="download-list-btn" style="flex:1">Download list</button>
+  </div>
   <div id="status"></div>
-  <button id="advanced-open-btn" class="btn-secondary">Advanced</button>
+
+  <div class="bottom-row">
+    <button id="advanced-open-btn" class="btn-secondary">Advanced</button>
+    <button id="list-open-btn" class="btn-secondary">Label list (<span id="list-count">0</span>)</button>
+    <button id="tools-open-btn" class="btn-secondary">Tools</button>
+  </div>
 </div>
 
 <div id="preview"></div>
 
-<div id="batch-modal" style="display:none">
-  <div id="batch-backdrop"></div>
-  <div id="batch-dialog">
+<!-- Advanced settings modal -->
+<div id="advanced-modal" style="display:none">
+  <div id="advanced-backdrop"></div>
+  <div id="advanced-dialog">
+    <h1>Advanced settings</h1>
+    <hr class="divider">
+    <div class="field" id="style-field">
+      <label>Label style</label>
+      <select id="style-select"></select>
+    </div>
+    <div class="params-grid">
+      <div class="field">
+        <label>Base</label>
+        <input type="color" id="base-color" value="{{ base_color }}" />
+      </div>
+      <div class="field">
+        <label>Text / accent</label>
+        <div style="display:flex; gap:6px;">
+          <input type="color" id="text-color" value="{{ text_color }}" style="flex:1;" />
+          <button type="button" class="btn-auto" id="auto-color-btn">Auto</button>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Text style</label>
+      <select id="param-text_style"></select>
+    </div>
+    <div class="field">
+      <label>Font</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="param-font" style="flex:1"></select>
+        <div class="checkbox-row"><input type="checkbox" id="param-bold" /><label for="param-bold">Bold</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="param-italic" /><label for="param-italic">Italic</label></div>
+      </div>
+    </div>
+    <div class="params-grid">
+      <div class="field">
+        <label>Font size (mm)</label>
+        <input type="number" id="param-font_size" value="6" step="0.5" min="1" />
+      </div>
+      <div class="field">
+        <label>Column separator</label>
+        <input type="text" id="param-column_separator" value="|" />
+      </div>
+    </div>
+    <button id="advanced-close-btn" class="btn-secondary">Close</button>
+  </div>
+</div>
+
+<!-- Label list modal -->
+<div id="list-modal" style="display:none">
+  <div id="list-backdrop"></div>
+  <div id="list-dialog">
     <h1>Label list</h1>
-    <div id="batch-list"></div>
+    <div id="list-entries"></div>
     <div style="display:flex; gap:8px;">
-      <button id="batch-add-btn" class="btn-secondary" style="flex:1">+ Add label</button>
-      <button id="batch-clear-btn" class="btn-secondary" style="flex:1">Clear all</button>
+      <button id="list-clear-btn" class="btn-secondary" style="flex:1">Clear all</button>
     </div>
     <div style="display:flex; gap:8px;">
-      <button id="batch-generate-btn" style="flex:1">Generate preview</button>
-      <button id="batch-close-btn" class="btn-secondary" style="flex:1">Cancel</button>
+      <button id="download-batch-btn" style="flex:1">Download 3MF</button>
+      <button id="list-close-btn" class="btn-secondary" style="flex:1">Close</button>
     </div>
   </div>
 </div>
 
-<div id="advanced-modal" style="display:none">
-  <div id="advanced-backdrop"></div>
-  <div id="advanced-dialog">
-    <h1>Advanced</h1>
+<!-- Tools modal -->
+<div id="tools-modal" style="display:none">
+  <div id="tools-backdrop"></div>
+  <div id="tools-dialog">
+    <h1>Tools</h1>
     <hr class="divider">
     <div class="field">
       <label>Font sampler</label>
       <p style="font-size:0.8rem;color:#888;margin-bottom:6px">Generate one label per font (regular + bold) using the font name as text.</p>
       <button id="font-sampler-btn">Generate font sampler</button>
     </div>
-    <button id="advanced-close-btn" class="btn-secondary">Close</button>
+    <button id="tools-close-btn" class="btn-secondary">Close</button>
   </div>
 </div>
 

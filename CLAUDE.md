@@ -22,13 +22,24 @@ auto-expanded to `#RRGGBBAA` (fully opaque) when writing the 3MF.
 
 ## Architecture
 
+The app follows **MVC**: the Model (`labels/`) owns all data and geometry logic; the View (`static/app.js`, `templates/`) handles display and user input only; the Controller (`main.py`) is the intermediary — it receives requests, resolves string IDs to real objects, and calls into the model.
+
 ### API (main.py)
 ```
-GET  /          → serves the UI
-GET  /systems   → returns full system/box/style hierarchy for the UI
-POST /generate  → {text, style, params} → returns 3MF + STL file URLs
+GET  /                      → serves the UI
+GET  /systems               → returns full system/box/style hierarchy for the UI
+POST /generate              → LabelRequest → STL + 3MF URLs (preview, does not add to batch list)
+POST /generate-batch        → list[LabelRequest] → batch 3MF URL (each label carries its own settings)
+POST /generate-font-sampler → LabelRequest → font sampler 3MF URL
 GET  /download/{file}
 ```
+`LabelRequest` carries: `system_id`, `box_id`, `style_id`, `text`, `font`, `bold`, `italic`,
+`font_size`, `text_style`, `base_color`, `text_color`, `column_separator`.
+
+The `Label` dataclass (`labels/label.py`) is the central model object — the controller resolves
+string IDs (`style_id` → `LabelStyle` instance, `system_id`/`box_id` → box param dict from YAML)
+and creates a `Label`. Everything downstream uses the real object, not string IDs.
+
 Files are UUID-named under `generated/`. Old files (>24 h) are cleaned up on startup and each
 generate. Session files (base STL, text STL, 3MF) are deleted after the 3MF is downloaded via
 `BackgroundTasks`.
@@ -36,6 +47,7 @@ generate. Session files (base STL, text STL, 3MF) are deleted after the 3MF is d
 ### Label styles (labels/)
 Label logic is split into two concerns — see `labels/CLAUDE.md` for full details.
 
+- `labels/label.py` — `Label` dataclass: the central model object (holds `LabelStyle` instance, box params dict, and all text/font/color params). Created by the controller at the JSON boundary.
 - `labels/styles/` — one file per label style; auto-discovered at startup
 - `labels/helpers/` — shared geometry, text, and composition helpers (no file I/O)
 
@@ -70,13 +82,23 @@ and not shown as editable fields in the UI.
 File I/O and format logic — no label-specific geometry. See `lib/CLAUDE.md` for details.
 
 ### UI (templates/index.html)
-Single-page app. On load, fetches `/systems` and populates:
-1. System selector → Box selector → Style selector (hidden when only one style exists)
-2. Editable parameter fields: text style, font, font size (width/height/depth come from the box and are not shown)
-3. Text entry (textarea, supports `\n` for multi-line)
-4. Multi-column checkbox — reveals a separator input; injects `column_separator` param at generate time
-5. Generate button → 3D STL preview (Three.js) + Download 3MF button
-6. Warnings shown in amber if text overflows the label dimensions
+Single-page app. On load, fetches `/systems` and populates System and Box dropdowns.
+
+**Sidebar** (always visible):
+- System / Box selectors
+- Label text grid — expandable rows × columns of single-line inputs
+  - `[+ Row]` / `[+ Col]` / `[− Row]` / `[− Col]` buttons
+  - JS encodes the grid to a column-major string (`col0r0\ncol0r1|col1r0`) sent to the backend
+- **Generate** → 3D STL preview (Three.js), does not add to batch list
+- **Save to list** → stores a full snapshot (text + all settings) in the label list
+- Status / warnings (amber if text overflows)
+- **[Advanced]** / **[Label list N]** / **[Tools]** buttons
+
+**Advanced modal** (popup): label style, base color, text color (+ Auto), text style, font, bold, italic, font size, column separator.
+
+**Label list modal**: each entry has an editable text field (multi-row/column shown as inline text, e.g. `Resistors / 220Ω | Caps`), an Edit button (loads full snapshot back into the editor), and a ✕ remove button. Download 3MF sends all snapshots to `/generate-batch` — each label uses its own saved settings.
+
+**Tools modal**: font sampler generator.
 
 ## Environment
 - LXC on Proxmox, project at `/opt/labelmaker`

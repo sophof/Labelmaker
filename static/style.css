@@ -20,7 +20,6 @@ input[type="color"] {
   width: 100%; height: 34px; padding: 2px 3px; cursor: pointer;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: #888; }
-textarea { resize: vertical; font-family: inherit; }
 
 .checkbox-row { display: flex; align-items: center; gap: 8px; }
 .checkbox-row input[type="checkbox"] { width: auto; accent-color: #2563eb; }
@@ -29,9 +28,7 @@ select option { background: #333; }
 
 .divider { border: none; border-top: 1px solid #333; margin: 4px 0; }
 
-.params-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-}
+.params-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 button {
   -webkit-appearance: none; appearance: none;
@@ -42,18 +39,17 @@ button {
   padding: 0 10px; height: 34px; font-size: 0.8rem; border-radius: 4px; flex-shrink: 0;
 }
 .btn-auto:hover { background: #444; color: #fff; }
+
 #generate-btn { background: #2563eb; color: #fff; }
 #generate-btn:hover { background: #1d4ed8; }
 #generate-btn:disabled { background: #444; cursor: default; }
-#batch-open-btn { background: #2563eb; color: #fff; border: none; }
-#batch-open-btn:hover { background: #1d4ed8; color: #fff; }
-#download-batch-btn {
-  background: #16a34a; color: #fff; padding: 10px; border-radius: 6px; font-size: 0.95rem;
-}
-#download-batch-btn:hover { background: #15803d; }
-#download-batch-btn:disabled { background: #444; cursor: default; }
-#download-batch-btn.has-warning { background: #dc2626; }
-#download-batch-btn.has-warning:hover { background: #b91c1c; }
+
+.btn-save { background: #16a34a; color: #fff; }
+.btn-save:hover { background: #15803d; }
+
+#download-batch-btn, #download-list-btn, #generate-list-btn { background: #2563eb; color: #fff; padding: 10px; border-radius: 6px; font-size: 0.95rem; }
+#download-batch-btn:hover, #download-list-btn:hover, #generate-list-btn:hover { background: #1d4ed8; }
+#download-batch-btn:disabled, #download-list-btn:disabled, #generate-list-btn:disabled { background: #444; cursor: default; }
 
 #status { font-size: 0.8rem; color: #aaa; min-height: 1.2em; }
 #status.warning { color: #fbbf24; font-size: 0.85rem; font-weight: 600; }
@@ -66,45 +62,66 @@ canvas { display: block; }
 }
 .btn-secondary:hover { background: #444; color: #fff; }
 
-#batch-modal {
-  position: fixed; inset: 0; z-index: 100;
-  display: flex; align-items: center; justify-content: center;
-}
-#batch-backdrop {
-  position: absolute; inset: 0; background: rgba(0, 0, 0, 0.6);
-}
-#batch-dialog {
-  position: relative; background: #242424; border-radius: 8px;
-  padding: 24px; width: 520px; max-height: 80vh;
-  display: flex; flex-direction: column; gap: 12px; overflow: hidden;
-}
-#batch-list {
-  display: flex; flex-direction: column; gap: 8px;
-  overflow-y: auto; flex: 1; min-height: 60px;
-}
-.batch-entry { display: flex; gap: 8px; align-items: flex-start; }
-.batch-entry textarea { flex: 1; resize: vertical; }
-.batch-remove-btn {
-  background: #3a3a3a; color: #888; border: 1px solid #555;
-  border-radius: 4px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; flex-shrink: 0;
-}
-.batch-remove-btn:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
-#batch-generate-btn { background: #16a34a; color: #fff; }
-#batch-generate-btn:hover { background: #15803d; }
-#batch-generate-btn:disabled { background: #444; cursor: default; }
+.btn-small { padding: 5px 10px; font-size: 0.8rem; border-radius: 4px; }
+.btn-danger:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
 
-#advanced-modal {
+/* Label text grid — gap shows through as grid lines */
+#label-grid {
+  display: grid;
+  gap: 1px;
+  background: #555;
+  border: 1px solid #555;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.grid-cell {
+  border: none;
+  border-radius: 0;
+  background: #2a2a2a;
+  color: #eee;
+  padding: 8px 10px;
+  font-size: 0.95rem;
+  width: 100%;
+}
+.grid-cell:focus { outline: none; background: #333; }
+
+.grid-controls {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+
+.bottom-row {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+
+/* Shared modal structure */
+.modal-overlay {
   position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
 }
-#advanced-backdrop {
+.modal-backdrop {
   position: absolute; inset: 0; background: rgba(0, 0, 0, 0.6);
 }
-#advanced-dialog {
+.modal-dialog {
   position: relative; background: #242424; border-radius: 8px;
-  padding: 24px; width: 360px;
-  display: flex; flex-direction: column; gap: 12px;
+  padding: 24px; display: flex; flex-direction: column; gap: 12px;
 }
+
+#advanced-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+#advanced-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+#advanced-dialog { position: relative; background: #242424; border-radius: 8px; padding: 24px; width: 380px; display: flex; flex-direction: column; gap: 12px; }
+
+#list-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+#list-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+#list-dialog { position: relative; background: #242424; border-radius: 8px; padding: 24px; width: 520px; max-height: 80vh; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+
+#list-entries { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 60px; }
+.list-entry { display: flex; gap: 8px; align-items: center; }
+.list-entry-text { flex: 1; }
+
+#tools-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+#tools-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+#tools-dialog { position: relative; background: #242424; border-radius: 8px; padding: 24px; width: 360px; display: flex; flex-direction: column; gap: 12px; }
+
 #font-sampler-btn { background: #2563eb; color: #fff; }
 #font-sampler-btn:hover { background: #1d4ed8; }
 #font-sampler-btn:disabled { background: #444; cursor: default; }
