@@ -40,9 +40,10 @@ The `Label` dataclass (`labels/label.py`) is the central model object — the co
 string IDs (`style_id` → `LabelStyle` instance, `system_id`/`box_id` → box param dict from YAML)
 and creates a `Label`. Everything downstream uses the real object, not string IDs.
 
-Files are UUID-named under `generated/`. Old files (>24 h) are cleaned up on startup and each
-generate. Session files (base STL, text STL, 3MF) are deleted after the 3MF is downloaded via
-`BackgroundTasks`.
+Files are UUID-named under `generated/`. Nothing is meant to persist: on startup the whole
+`generated/` dir is wiped (`wipe_generated_dir`), and every generate call also sweeps files
+older than 1 h (`cleanup_old_files`) as a safety net for previews nobody downloaded. There is
+no per-download cleanup — download URLs stay valid until the next sweep or restart.
 
 ### Label styles (labels/)
 Label logic is split into two concerns — see `labels/CLAUDE.md` for full details.
@@ -102,11 +103,18 @@ Single-page app. On load, fetches `/systems` and populates System and Box dropdo
 
 ## Testing
 
-Run tests with `.venv/bin/pytest` from the project root (`testpaths = ["tests"]` is set in `pyproject.toml`).
+Run tests from the project root (`testpaths = ["tests"]` is set in `pyproject.toml`):
+- Fast loop (skips geometry-heavy tests): `.venv/bin/pytest -m "not slow"`
+- Full suite (required before declaring a task done): `.venv/bin/pytest`
 
-**Policy:**
-- **Bugs / regressions:** write a failing test that reproduces the issue *before* fixing it. The fix is done when the test passes.
-- **New features:** a test is preferred but not required.
+Geometry tests that build real build123d solids carry `@pytest.mark.slow`.
+
+**Policy — test-first (see `.claude/skills/test-first/SKILL.md` for the full workflow):**
+- **Every change** (bug fix, feature, refactor, new style) gets a test written *before* the
+  implementation. Watch it fail for the right reason, implement, make it pass.
+- A task is only done when the full suite is green; report the pytest summary line.
+- Exception: pure UI/template/docs changes have no Python test surface — verify manually
+  in the browser instead.
 
 ## Environment
 - LXC on Proxmox, project at `/opt/labelmaker`

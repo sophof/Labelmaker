@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 import yaml
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -16,9 +16,9 @@ from labels.label import Label
 from labels.helpers.sampler import build_font_sampler
 from lib.storage import (
     cleanup_old_files,
-    cleanup_session,
     ensure_dir,
     path_for,
+    wipe_generated_dir,
     write_batch_session,
 )
 from systems import load_systems
@@ -27,7 +27,7 @@ from systems import load_systems
 @asynccontextmanager
 async def lifespan(app):
     ensure_dir()
-    cleanup_old_files()
+    wipe_generated_dir()
     yield
 
 
@@ -150,16 +150,12 @@ def generate_font_sampler(req: LabelRequest):
 
 
 @app.get("/download/{filename}")
-def download(filename: str, background_tasks: BackgroundTasks):
+def download(filename: str):
     if filename != os.path.basename(filename):
         raise HTTPException(status_code=400, detail="Invalid filename")
     path = path_for(filename)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")
-
-    if filename.endswith("_batch.3mf"):
-        session_id = filename[: -len("_batch.3mf")]
-        background_tasks.add_task(cleanup_session, session_id)
 
     return FileResponse(path)
 

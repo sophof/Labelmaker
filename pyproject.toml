@@ -14,9 +14,19 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest>=9.1.1",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "slow: geometry-heavy tests that exercise real build123d/OpenCASCADE",
+]
+filterwarnings = [
+    "error",
+    # build123d (deprecated arc-tangent helpers) and its ezdxf/pyparsing
+    # dependencies emit these at import time; not actionable in this project.
+    "ignore::DeprecationWarning",
+]

@@ -6,7 +6,7 @@ import uuid
 from .export import export_labels_batch
 
 GENERATED_DIR = "generated"
-MAX_FILE_AGE = 86400  # 24 hours
+MAX_FILE_AGE = 3600  # 1 hour — safety net for abandoned previews, not a retention window
 
 
 def ensure_dir() -> None:
@@ -27,8 +27,8 @@ def cleanup_old_files() -> None:
             pass
 
 
-def cleanup_session(session_id: str) -> None:
-    for f in glob.glob(os.path.join(GENERATED_DIR, f"{session_id}_*.3mf")):
+def wipe_generated_dir() -> None:
+    for f in glob.glob(os.path.join(GENERATED_DIR, "*")):
         try:
             os.remove(f)
         except OSError:
