@@ -49,6 +49,7 @@ class LabelRequest(BaseModel):
     base_color: str = BASE_COLOR
     text_color: str = TEXT_COLOR
     column_separator: str = "|"
+    line_spacing: float = 1.0
 
 
 def _resolve_style(style_id: str):
@@ -89,6 +90,7 @@ def _build_label(req: LabelRequest) -> Label:
         base_color=req.base_color,
         text_color=req.text_color,
         column_separator=req.column_separator,
+        line_spacing=req.line_spacing,
     )
 
 

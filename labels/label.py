@@ -16,6 +16,7 @@ class Label:
     base_color: str
     text_color: str
     column_separator: str
+    line_spacing: float = 1.0
 
     def params(self) -> dict:
         """Merge box geometry params with text/style params for style.build()."""
@@ -27,4 +28,5 @@ class Label:
             "font_size": self.font_size,
             "text_style": self.text_style,
             "column_separator": self.column_separator,
+            "line_spacing": self.line_spacing,
         }

@@ -83,11 +83,16 @@ def _shape_to_xml(shape: Shape, obj_id: int, name: str, pid: int | None, pindex:
     </object>"""
 
 
-def export_3mf(shapes: list[tuple[Shape, str, str | None]], output_path: str) -> None:
-    """Write a standard 3MF with one mesh object per (shape, name, color) tuple.
+def export_3mf(groups: list[list[tuple[Shape, str, str | None]]], output_path: str) -> None:
+    """Write a standard 3MF, grouping each label's parts into one printable object.
 
-    Each object references the m:colorgroup by pid/pindex so BambuStudio/OrcaSlicer
-    prompt the user to map colors to filaments on open.
+    `groups` is one list of (shape, name, color) tuples per label. Every part
+    becomes a mesh <object> that references the m:colorgroup by pid/pindex — so
+    BambuStudio/OrcaSlicer still prompt the user to map colors to filaments — but
+    each label's meshes are then wrapped in a single container <object> via
+    <components>, and only the containers are placed in <build>. That way a label
+    loads as one object whose bottom is the base at Z=0: the text and accents stay
+    linked to the base instead of dropping to the build plate on their own.
 
     NOTE: BambuStudio 2.5+ has a regression (issue #9666) where pid/pindex color data
     is treated as Color Painting, bleeding through top_shell_layers × layer_height
@@ -95,10 +100,11 @@ def export_3mf(shapes: list[tuple[Shape, str, str | None]], output_path: str) ->
     """
     color_order: list[str] = []
     color_index: dict[str, int] = {}
-    for _, _name, color in shapes:
-        if color is not None and color not in color_index:
-            color_index[color] = len(color_order)
-            color_order.append(color)
+    for parts in groups:
+        for _, _name, color in parts:
+            if color is not None and color not in color_index:
+                color_index[color] = len(color_order)
+                color_order.append(color)
 
     colorgroup_xml = ""
     if color_order:
@@ -108,18 +114,36 @@ def export_3mf(shapes: list[tuple[Shape, str, str | None]], output_path: str) ->
         )
         colorgroup_xml = f'  <m:colorgroup id="1">\n      {entries}\n  </m:colorgroup>\n'
 
-    obj_id_start = 2
-    objects_xml = "\n".join(
-        _shape_to_xml(
-            shape, obj_id_start + i, name,
-            pid=1 if color is not None else None,
-            pindex=color_index.get(color) if color is not None else None,
+    # Assign every mesh object an id first (2..N+1), then one container id per group.
+    mesh_xml: list[str] = []
+    group_mesh_ids: list[list[int]] = []
+    next_id = 2
+    for parts in groups:
+        ids = []
+        for shape, name, color in parts:
+            mesh_xml.append(_shape_to_xml(
+                shape, next_id, name,
+                pid=1 if color is not None else None,
+                pindex=color_index.get(color) if color is not None else None,
+            ))
+            ids.append(next_id)
+            next_id += 1
+        group_mesh_ids.append(ids)
+
+    container_xml: list[str] = []
+    build_ids: list[int] = []
+    for ids in group_mesh_ids:
+        components = "\n        ".join(f'<component objectid="{i}"/>' for i in ids)
+        container_xml.append(
+            f'    <object id="{next_id}" type="model">\n'
+            f'      <components>\n        {components}\n      </components>\n'
+            f'    </object>'
         )
-        for i, (shape, name, color) in enumerate(shapes)
-    )
-    items_xml = "\n  ".join(
-        f'<item objectid="{obj_id_start + i}"/>' for i in range(len(shapes))
-    )
+        build_ids.append(next_id)
+        next_id += 1
+
+    objects_xml = "\n".join(mesh_xml + container_xml)
+    items_xml = "\n  ".join(f'<item objectid="{i}"/>' for i in build_ids)
 
     model = f"""\
 <?xml version="1.0" encoding="UTF-8"?>

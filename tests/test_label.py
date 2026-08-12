@@ -16,6 +16,7 @@ def _label(**overrides):
         base_color="#FF6600",
         text_color="#000000",
         column_separator="|",
+        line_spacing=1.0,
     )
     return Label(**{**defaults, **overrides})
 
@@ -27,6 +28,7 @@ def test_params_merges_box_and_text_settings():
     assert params["font"] == "Arial"
     assert params["text_style"] == "debossed"
     assert params["column_separator"] == "|"
+    assert params["line_spacing"] == 1.0
 
 
 def test_label_font_size_overrides_box_font_size():

@@ -66,6 +66,23 @@ def test_in_cell_spacing_is_tighter_than_grid_row_spacing():
     assert grid_row_gap == pytest.approx(LINE_SPACING)
 
 
+def test_line_spacing_param_overrides_default():
+    tight = iter_text_blocks("a\nb", {**PARAMS, "line_spacing": 0.8})
+    wide = iter_text_blocks("a\nb", {**PARAMS, "line_spacing": 1.5})
+    tight_gap = tight[0][2] - tight[1][2]
+    wide_gap = wide[0][2] - wide[1][2]
+    assert tight_gap == pytest.approx(PARAMS["font_size"] * 0.8)
+    assert wide_gap == pytest.approx(PARAMS["font_size"] * 1.5)
+    assert tight_gap < wide_gap
+
+
+def test_line_spacing_defaults_to_constant_when_absent():
+    # PARAMS carries no line_spacing, so the CELL_LINE_SPACING_FACTOR default applies.
+    blocks = iter_text_blocks("a\nb", PARAMS)
+    gap = blocks[0][2] - blocks[1][2]
+    assert gap == pytest.approx(PARAMS["font_size"] * CELL_LINE_SPACING_FACTOR)
+
+
 def test_grid_two_rows_share_vertical_symmetry():
     blocks = iter_text_blocks(f"a{RS}b", PARAMS)
     ys = [y for _, _, y in blocks]

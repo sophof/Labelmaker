@@ -163,6 +163,9 @@ function populateAdvancedParams(params) {
   const fsEl = document.getElementById('param-font_size');
   if (params.font_size !== undefined) fsEl.value = params.font_size.value ?? params.font_size.default ?? 6;
 
+  const lsEl = document.getElementById('param-line_spacing');
+  if (params.line_spacing !== undefined) lsEl.value = params.line_spacing.value ?? params.line_spacing.default ?? 1.0;
+
   const sepEl = document.getElementById('param-column_separator');
   if (params.column_separator !== undefined) sepEl.value = params.column_separator.value ?? params.column_separator.default ?? '|';
 }
@@ -279,6 +282,7 @@ function currentSnapshot() {
     bold: document.getElementById('param-bold').checked,
     italic: document.getElementById('param-italic').checked,
     font_size: parseFloat(document.getElementById('param-font_size').value),
+    line_spacing: parseFloat(document.getElementById('param-line_spacing').value) || 1.0,
     text_style: document.getElementById('param-text_style').value,
     base_color: baseColor,
     text_color: textColor,
@@ -303,6 +307,7 @@ function applySnapshot(snap) {
   document.getElementById('param-bold').checked = snap.bold;
   document.getElementById('param-italic').checked = snap.italic;
   document.getElementById('param-font_size').value = snap.font_size;
+  document.getElementById('param-line_spacing').value = snap.line_spacing ?? 1.0;
   document.getElementById('param-text_style').value = snap.text_style;
   document.getElementById('param-column_separator').value = snap.column_separator;
 

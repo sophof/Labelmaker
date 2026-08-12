@@ -62,32 +62,64 @@ def test_colorgroup_dedups_colors_preserving_order(monkeypatch, tmp_path):
     out = tmp_path / "out.3mf"
     export_3mf(
         [
-            (object(), "label1_base", "#112233"),
-            (object(), "label1_text", "#AABBCC"),
-            (object(), "label2_base", "#112233"),
+            [(object(), "label1_base", "#112233"), (object(), "label1_text", "#AABBCC")],
+            [(object(), "label2_base", "#112233")],
         ],
         str(out),
     )
     model = _read_model(out)
     colors = re.findall(r'<m:color color="([^"]+)"/>', model)
     assert colors == ["#112233FF", "#AABBCCFF"]
-    # Third object reuses the first color's index.
+    # Mesh objects keep their color hints (pid/pindex) unchanged; the third
+    # reuses the first color's index.
+    assert '<object id="2" name="label1_base" pid="1" pindex="0"/>' in model
+    assert '<object id="3" name="label1_text" pid="1" pindex="1"/>' in model
     assert '<object id="4" name="label2_base" pid="1" pindex="0"/>' in model
+
+
+def test_each_label_is_one_grouped_object_with_components(monkeypatch, tmp_path):
+    monkeypatch.setattr(build_3mf, "_shape_to_xml", _fake_shape_to_xml)
+    out = tmp_path / "out.3mf"
+    export_3mf(
+        [
+            [(object(), "label1_base", "#112233"), (object(), "label1_text", "#AABBCC")],
+            [(object(), "label2_base", "#112233")],
+        ],
+        str(out),
+    )
+    model = _read_model(out)
+    # Mesh ids are 2,3,4; container objects follow (5,6), each grouping one
+    # label's parts via <components>.
+    assert re.search(
+        r'<object id="5" type="model">\s*<components>\s*'
+        r'<component objectid="2"/>\s*<component objectid="3"/>\s*'
+        r'</components>\s*</object>',
+        model,
+    )
+    assert re.search(
+        r'<object id="6" type="model">\s*<components>\s*'
+        r'<component objectid="4"/>\s*</components>\s*</object>',
+        model,
+    )
+    # Only the containers are built — never the individual meshes.
+    assert re.findall(r'<item objectid="(\d+)"/>', model) == ["5", "6"]
 
 
 def test_export_without_colors_omits_colorgroup(monkeypatch, tmp_path):
     monkeypatch.setattr(build_3mf, "_shape_to_xml", _fake_shape_to_xml)
     out = tmp_path / "out.3mf"
-    export_3mf([(object(), "base", None)], str(out))
+    export_3mf([[(object(), "base", None)]], str(out))
     model = _read_model(out)
     assert "<m:colorgroup" not in model
-    assert '<item objectid="2"/>' in model
+    # Mesh id 2, container id 3 is the one placed in the build.
+    assert '<item objectid="3"/>' in model
+    assert '<item objectid="2"/>' not in model
 
 
 def test_zip_contains_required_members(monkeypatch, tmp_path):
     monkeypatch.setattr(build_3mf, "_shape_to_xml", _fake_shape_to_xml)
     out = tmp_path / "out.3mf"
-    export_3mf([(object(), "base", "#000000")], str(out))
+    export_3mf([[(object(), "base", "#000000")]], str(out))
     with zipfile.ZipFile(out) as zf:
         names = set(zf.namelist())
     assert {"[Content_Types].xml", "_rels/.rels", "3D/3dmodel.model"} <= names

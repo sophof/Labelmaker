@@ -95,19 +95,21 @@ def export_labels_batch(
     """
     positions = _arrange_positions(len(label_parts_list), label_width, label_height, gap)
 
-    all_shapes = []
+    groups = []
     base_shapes = []
     text_shapes = []
     for i, (parts, (x, y)) in enumerate(zip(label_parts_list, positions)):
+        group = []
         for j, p in enumerate(parts):
             shifted = p.shape.moved(Location(Vector(x, y, 0)))
-            all_shapes.append((shifted, f"label{i + 1}_{p.name}", p.color))
+            group.append((shifted, f"label{i + 1}_{p.name}", p.color))
             if j == 0:
                 base_shapes.append(shifted)
             else:
                 text_shapes.append(shifted)
+        groups.append(group)
 
-    export_3mf(all_shapes, tmf_path)
+    export_3mf(groups, tmf_path)
 
     if base_stl_path and base_shapes:
         export_stl(Compound(base_shapes) if len(base_shapes) > 1 else base_shapes[0], base_stl_path)

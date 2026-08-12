@@ -2,9 +2,11 @@ from build123d import Align, BuildPart, BuildSketch, FontStyle, Locations, Plane
 
 # Gap between grid rows (created with +Row); wide enough to seat a divider.
 LINE_SPACING_FACTOR = 1.3
-# Gap between lines inside a single cell (in-cell "\n" / Enter); tighter, since
-# these lines belong together and have no divider between them.
-CELL_LINE_SPACING_FACTOR = 1.1
+# Default gap between lines inside a single cell (in-cell "\n" / Enter), as a
+# multiple of the font size. Tighter than a grid row, since these lines belong
+# together and have no divider between them. Overridable per label via the
+# "line_spacing" param (see labels/helpers/params.py).
+CELL_LINE_SPACING_FACTOR = 1.0
 DIVIDER_WIDTH = 0.4
 DIVIDER_CLEARANCE = 2.0
 
@@ -46,7 +48,7 @@ def _band_layout(grid: list[list[list[str]]], params: dict):
     gap on top so its divider has room. The stack is centred on y=0.
     """
     font_size = params["font_size"]
-    cell_spacing = font_size * CELL_LINE_SPACING_FACTOR
+    cell_spacing = font_size * params.get("line_spacing", CELL_LINE_SPACING_FACTOR)
 
     num_rows = max((len(col) for col in grid), default=0)
     band_counts = _band_line_counts(grid, num_rows)

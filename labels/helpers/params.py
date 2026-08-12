@@ -8,6 +8,7 @@ TEXT_PARAMS = {
     "bold":             {"type": "bool", "default": True,    "label": "Bold"},
     "italic":           {"type": "bool", "default": False,   "label": "Italic"},
     "font_size":        {"type": "float", "default": 6.0,  "unit": "mm", "label": "Font size"},
+    "line_spacing":     {"type": "float", "default": 1.0,  "label": "Line spacing"},
     "column_separator": {"type": "str",   "default": "|",   "label": "Column separator"},
 }
 
