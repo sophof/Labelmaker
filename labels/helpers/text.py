@@ -1,43 +1,90 @@
 from build123d import Align, BuildPart, BuildSketch, FontStyle, Locations, Plane, Rectangle, Text, extrude
 
+# Gap between grid rows (created with +Row); wide enough to seat a divider.
 LINE_SPACING_FACTOR = 1.3
+# Gap between lines inside a single cell (in-cell "\n" / Enter); tighter, since
+# these lines belong together and have no divider between them.
+CELL_LINE_SPACING_FACTOR = 1.1
 DIVIDER_WIDTH = 0.4
 DIVIDER_CLEARANCE = 2.0
 
+# Grid rows (created with the +Row button) are joined with this sentinel and
+# draw a horizontal divider between them. A plain "\n" inside a cell is an
+# in-cell line break: it stacks another centred line but draws no divider.
+ROW_SEPARATOR = "\x1e"
 
-def _parse_columns(text: str, params: dict) -> list[list[str]]:
-    """Return a list of columns, each a list of row strings."""
+
+def _parse_grid(text: str, params: dict) -> list[list[list[str]]]:
+    """Return columns → rows(cells) → lines.
+
+    Columns split on the (visible) column separator, grid rows on
+    ROW_SEPARATOR, and each cell's lines on "\\n".
+    """
     separator = params.get("column_separator", "")
     if separator and separator in text:
         columns = [c.strip() for c in text.split(separator)]
     else:
         columns = [text]
-    return [col.split("\n") for col in columns]
+    return [[cell.split("\n") for cell in col.split(ROW_SEPARATOR)] for col in columns]
+
+
+def _band_line_counts(grid: list[list[list[str]]], num_rows: int) -> list[int]:
+    """Line count of each grid row's tallest cell, across all columns."""
+    counts = []
+    for r in range(num_rows):
+        counts.append(max((len(col[r]) for col in grid if r < len(col)), default=0))
+    return counts
+
+
+def _band_layout(grid: list[list[list[str]]], params: dict):
+    """Return (band_counts, band_extents, band_centers, cell_spacing).
+
+    Every grid row is given the SAME height — that of the tallest row — so the
+    rows divide the label evenly and the dividers between them stay centred,
+    even when one row holds a multiline cell. Lines inside a cell are spaced by
+    the tighter CELL_LINE_SPACING_FACTOR; each row adds a LINE_SPACING_FACTOR
+    gap on top so its divider has room. The stack is centred on y=0.
+    """
+    font_size = params["font_size"]
+    cell_spacing = font_size * CELL_LINE_SPACING_FACTOR
+
+    num_rows = max((len(col) for col in grid), default=0)
+    band_counts = _band_line_counts(grid, num_rows)
+
+    row_extent = max((count - 1 for count in band_counts), default=0) * cell_spacing
+    row_pitch = row_extent + font_size * LINE_SPACING_FACTOR
+    centers = [(num_rows - 1) / 2 * row_pitch - r * row_pitch for r in range(num_rows)]
+    extents = [row_extent] * num_rows
+
+    return band_counts, extents, centers, cell_spacing
 
 
 def iter_text_blocks(text: str, params: dict) -> list[tuple[str, float, float]]:
-    """Return (line_text, x_offset, y_offset) for every line in every column.
+    """Return (line_text, x_offset, y_offset) for every rendered line.
 
-    Y positions are based on the global max row count so all columns share
-    the same row baselines regardless of how many rows each column has.
+    Grid rows stack into vertical bands (see _band_layout) so all columns share
+    the same row baselines. Lines inside a multiline cell are centred within
+    their band using the tighter in-cell spacing.
     """
-    font_size = params["font_size"]
-    line_spacing = font_size * LINE_SPACING_FACTOR
-
-    columns = _parse_columns(text, params)
-    num_cols = len(columns)
+    grid = _parse_grid(text, params)
+    num_cols = len(grid)
     col_width = params["width"] / num_cols
-    max_rows = max(len(rows) for rows in columns)
+    _, _, centers, cell_spacing = _band_layout(grid, params)
 
     result = []
-    for col_idx, rows in enumerate(columns):
-        x = -params["width"] / 2 + (col_idx + 0.5) * col_width
-        for row_idx, line in enumerate(rows):
-            stripped = line.strip()
-            if not stripped:
+    for r, center in enumerate(centers):
+        for col_idx, col in enumerate(grid):
+            x = -params["width"] / 2 + (col_idx + 0.5) * col_width
+            if r >= len(col):
                 continue
-            y = (max_rows - 1) / 2 * line_spacing - row_idx * line_spacing
-            result.append((stripped, x, y))
+            cell = col[r]
+            cell_extent = (len(cell) - 1) * cell_spacing
+            for i, line in enumerate(cell):
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                y = center + cell_extent / 2 - i * cell_spacing
+                result.append((stripped, x, y))
 
     return result
 
@@ -53,26 +100,27 @@ def divider_positions(text: str, params: dict) -> list[float]:
 
 
 def divider_positions_horizontal(text: str, params: dict) -> list[float]:
-    """Return the Y centre of each horizontal divider bar between rows.
+    """Return the Y centre of each horizontal divider bar between grid rows.
 
-    Only inserts a divider between row k and row k+1 when both rows have
-    content in at least one column — empty rows don't get a divider.
+    Dividers sit on the boundary between two grid rows (created with +Row),
+    never between in-cell line breaks. A gap is only drawn when both adjacent
+    rows have content in at least one column.
     """
-    font_size = params["font_size"]
-    line_spacing = font_size * LINE_SPACING_FACTOR
-
-    columns = _parse_columns(text, params)
-    max_rows = max(len(rows) for rows in columns)
-    if max_rows <= 1:
+    grid = _parse_grid(text, params)
+    band_counts, extents, centers, _ = _band_layout(grid, params)
+    num_rows = len(centers)
+    if num_rows <= 1:
         return []
 
+    def has_content(r: int) -> bool:
+        return any(r < len(col) and any(ln.strip() for ln in col[r]) for col in grid)
+
     result = []
-    for k in range(max_rows - 1):
-        above = any(k < len(col) and col[k].strip() for col in columns)
-        below = any(k + 1 < len(col) and col[k + 1].strip() for col in columns)
-        if above and below:
-            y = (max_rows - 1) / 2 * line_spacing - k * line_spacing - line_spacing / 2
-            result.append(y)
+    for k in range(num_rows - 1):
+        if has_content(k) and has_content(k + 1) and band_counts[k] and band_counts[k + 1]:
+            bottom_of_k = centers[k] - extents[k] / 2
+            top_of_next = centers[k + 1] + extents[k + 1] / 2
+            result.append((bottom_of_k + top_of_next) / 2)
     return result
 
 

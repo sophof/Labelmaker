@@ -5,6 +5,11 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const DEFAULT_BASE_COLOR = document.body.dataset.baseColor;
 const DEFAULT_TEXT_COLOR = document.body.dataset.textColor;
 
+// Grid rows (+Row) are joined with this sentinel and draw a divider between
+// them; a plain "\n" inside a cell is an in-cell line break with no divider.
+// Must match ROW_SEPARATOR in labels/helpers/text.py.
+const ROW_SEP = '\x1e';
+
 // --- 3D preview setup ---
 const container = document.getElementById('preview');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -171,9 +176,9 @@ function renderGrid() {
   grid.innerHTML = '';
   for (let r = 0; r < gridState.rows; r++) {
     for (let c = 0; c < gridState.cols; c++) {
-      const input = document.createElement('input');
-      input.type = 'text';
+      const input = document.createElement('textarea');
       input.className = 'grid-cell';
+      input.rows = 1;
       input.dataset.r = r;
       input.dataset.c = c;
       input.value = gridState.cells[r]?.[c] ?? '';
@@ -181,10 +186,22 @@ function renderGrid() {
       input.addEventListener('input', e => {
         if (!gridState.cells[r]) gridState.cells[r] = [];
         gridState.cells[r][c] = e.target.value;
+        resizeCells();
       });
       grid.appendChild(input);
     }
   }
+  resizeCells();
+}
+
+// Give every cell the height of the tallest one, so the grid stays a uniform
+// table even when a single cell holds multiple lines.
+function resizeCells() {
+  const cells = document.querySelectorAll('#label-grid .grid-cell');
+  cells.forEach(el => { el.style.height = 'auto'; });
+  let max = 0;
+  cells.forEach(el => { max = Math.max(max, el.scrollHeight); });
+  cells.forEach(el => { el.style.height = max + 'px'; });
 }
 
 function addRow() {
@@ -214,14 +231,15 @@ function removeLastCol() {
 }
 
 function getTextValue() {
-  // Column-major: col0row0\ncol0row1|col1row0\ncol1row1
+  // Column-major. Grid rows joined by ROW_SEP; a cell keeps its own "\n"
+  // line breaks. Columns joined by "|":  col0r0<RS>col0r1|col1r0<RS>col1r1
   const cols = [];
   for (let c = 0; c < gridState.cols; c++) {
     const colRows = [];
     for (let r = 0; r < gridState.rows; r++) {
       colRows.push(gridState.cells[r]?.[c] ?? '');
     }
-    cols.push(colRows.join('\n'));
+    cols.push(colRows.join(ROW_SEP));
   }
   return cols.join('|');
 }
@@ -229,7 +247,7 @@ function getTextValue() {
 function loadIntoGrid(text) {
   const sep = document.getElementById('param-column_separator').value || '|';
   const colStrings = text.includes(sep) ? text.split(sep) : [text];
-  const cols = colStrings.map(c => c.split('\n'));
+  const cols = colStrings.map(c => c.split(ROW_SEP));
   const numCols = cols.length;
   const numRows = Math.max(...cols.map(c => c.length));
   gridState = {
@@ -303,7 +321,8 @@ function renderListEntries() {
   }
   container.innerHTML = '';
   labelList.forEach((snap, idx) => {
-    const displayText = snap.text.replace(/\n/g, ' / ');
+    // Compact preview: grid rows as " / ", in-cell line breaks as " ↵ ".
+    const displayText = snap.text.split(ROW_SEP).join(' / ').replace(/\n/g, ' ↵ ');
     const entry = document.createElement('div');
     entry.className = 'list-entry';
 
@@ -312,8 +331,8 @@ function renderListEntries() {
     input.className = 'list-entry-text';
     input.value = displayText;
     input.addEventListener('change', e => {
-      // Decode display format back to encoded: ' / ' → '\n'
-      labelList[idx].text = e.target.value.replace(/ \/ /g, '\n');
+      // Decode display format back to encoded: ' ↵ ' → '\n', ' / ' → ROW_SEP.
+      labelList[idx].text = e.target.value.replace(/ ↵ /g, '\n').split(' / ').join(ROW_SEP);
     });
 
     const editBtn = document.createElement('button');
